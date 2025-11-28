@@ -71,6 +71,18 @@ json = "https://github.com/nlohmann/json.git"
 fmt = "https://github.com/fmtlib/fmt.git"
 ```
 
+## 🖼️ Showcase
+
+Experience a modern development workflow. Here is an example of running a C++ Web Server (`cpp-httplib`) with zero manual configuration.
+
+**1. The Build Process**
+`cx` handles dependency fetching, caching, and compiling automatically.
+![Terminal Build Demo](assets/demo-terminal.png)
+
+**2. The Result**
+The C++ server is up and running instantly.
+![Browser Output Demo](assets/demo-browser.png)
+
 ## 📝 License
 
 MIT

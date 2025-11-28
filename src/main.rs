@@ -162,6 +162,7 @@ fn fetch_dependencies(deps: &HashMap<String, String>) -> Result<Vec<String>> {
 
         include_paths.push(format!("-I{}", lib_path.display()));
         include_paths.push(format!("-I{}/include", lib_path.display()));
+        include_paths.push(format!("-I{}/src", lib_path.display()));
     }
 
     Ok(include_paths)
