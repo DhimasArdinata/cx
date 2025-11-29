@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use colored::*;
 use git2::Repository;
+use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use std::fs;
 
@@ -11,19 +12,31 @@ pub fn fetch_dependencies(deps: &HashMap<String, String>) -> Result<Vec<String>>
 
     let mut include_paths = Vec::new();
 
-    println!("{} Checking dependencies...", "📦".blue());
+    if !deps.is_empty() {
+        println!("{} Checking {} dependencies...", "📦".blue(), deps.len());
+    }
 
     for (name, url) in deps {
         let lib_path = cache_dir.join(name);
 
         if !lib_path.exists() {
-            println!("   {} Downloading {} (Global Cache)...", "⬇".cyan(), name);
-            println!("     URL: {}", url);
+            let pb = ProgressBar::new_spinner();
+            pb.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{spinner:.green} {msg}")?
+                    .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏", ""]),
+            );
+
+            pb.set_message(format!("Downloading {}...", name));
+            pb.enable_steady_tick(std::time::Duration::from_millis(100)); // Update tiap 100ms
 
             match Repository::clone(url, &lib_path) {
-                Ok(_) => println!("     Done."),
+                Ok(_) => {
+                    pb.finish_with_message(format!("{} Downloaded {}", "✓".green(), name));
+                }
                 Err(e) => {
-                    println!("{} Failed to download {}: {}", "x".red(), name, e);
+                    pb.finish_with_message(format!("{} Failed {}", "x".red(), name));
+                    println!("Error details: {}", e);
                     continue;
                 }
             }
