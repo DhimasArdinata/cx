@@ -1,5 +1,7 @@
 # cx - The Modern C/C++ Project Manager 🚀
 
+[![CI/CD Pipeline](https://github.com/DhimasArdinata/cx/actions/workflows/ci.yml/badge.svg)](https://github.com/DhimasArdinata/cx/actions/workflows/ci.yml)
+
 **cx** is a blazingly fast project manager and build tool for C and C++, written in Rust. It aims to provide a modern developer experience similar to `cargo` (Rust) or `npm` (JS) but for C++.
 
 > Built for speed, simplicity, and ease of use.
