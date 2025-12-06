@@ -141,6 +141,12 @@ The C++ server is up and running instantly.
 
 ![Browser Output Demo](assets/demo-browser.png)
 
+### 3. Advanced Libraries (Raylib)
+
+`cx` can even compile complex libraries like Raylib from source using custom build scripts!
+
+![Raylib Game Demo](assets/demo-raylib.png)
+
 ## 📝 License
 
 MIT

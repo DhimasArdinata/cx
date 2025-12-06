@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use colored::*;
 use notify::{Config, RecursiveMode, Watcher};
 use rayon::prelude::*;
+use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -30,14 +31,19 @@ pub fn build_project(release: bool) -> Result<bool> {
     fs::create_dir_all(&obj_dir)?;
 
     let mut include_flags = Vec::new();
+    let mut dep_libs = Vec::new();
+
     if let Some(deps) = &config.dependencies {
         if !deps.is_empty() {
-            include_flags = deps::fetch_dependencies(deps)?;
+            let (incs, libs) = deps::fetch_dependencies(deps)?;
+            include_flags = incs;
+            dep_libs = libs;
         }
     }
 
     let mut source_files = Vec::new();
     let mut has_cpp = false;
+
     for entry in WalkDir::new("src").into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
         if let Some(ext) = path.extension() {
@@ -59,11 +65,49 @@ pub fn build_project(release: bool) -> Result<bool> {
     let compiler = get_compiler(has_cpp);
     let common_flags = include_flags.clone();
 
+    let json_entries = std::sync::Mutex::new(Vec::new());
+    let current_dir = std::env::current_dir()?.to_string_lossy().to_string();
+
     let object_files: Vec<PathBuf> = source_files
-        .par_iter() // <--- INI MAGIC-NYA: Jalan di banyak core CPU sekaligus!
+        .par_iter()
         .map(|src_path| -> Result<PathBuf> {
             let stem = src_path.file_stem().unwrap().to_string_lossy();
             let obj_path = obj_dir.join(format!("{}.o", stem));
+
+            let mut args = Vec::new();
+            args.push(compiler.to_string());
+            args.push("-c".to_string());
+            args.push(src_path.to_string_lossy().to_string());
+            args.push("-o".to_string());
+            args.push(obj_path.to_string_lossy().to_string());
+            args.push(format!("-std={}", config.package.edition));
+
+            if release {
+                args.push("-O3".to_string());
+            } else {
+                args.push("-g".to_string());
+                args.push("-Wall".to_string());
+            }
+
+            if let Some(build_cfg) = &config.build {
+                if let Some(flags) = &build_cfg.cflags {
+                    for flag in flags {
+                        args.push(flag.clone());
+                    }
+                }
+            }
+            for flag in &common_flags {
+                args.push(flag.clone());
+            }
+
+            {
+                let entry = json!({
+                    "directory": current_dir,
+                    "command": args.join(" "),
+                    "file": src_path.to_string_lossy()
+                });
+                json_entries.lock().unwrap().push(entry);
+            }
 
             let needs_compile = if !obj_path.exists() {
                 true
@@ -74,34 +118,10 @@ pub fn build_project(release: bool) -> Result<bool> {
             };
 
             if needs_compile {
-                let mut cmd = Command::new(compiler);
-                cmd.arg("-c");
-                cmd.arg(src_path);
-                cmd.arg("-o").arg(&obj_path);
-                cmd.arg(format!("-std={}", config.package.edition));
-
-                if release {
-                    cmd.arg("-O3");
-                } else {
-                    cmd.arg("-g").arg("-Wall");
-                }
-
-                // Custom CFLAGS
-                if let Some(build_cfg) = &config.build {
-                    if let Some(flags) = &build_cfg.cflags {
-                        for flag in flags {
-                            cmd.arg(flag);
-                        }
-                    }
-                }
-
-                // Include Flags
-                for flag in &common_flags {
-                    cmd.arg(flag);
-                }
+                let mut cmd = Command::new(&args[0]);
+                cmd.args(&args[1..]);
 
                 let output = cmd.output().context("Failed to execute compiler")?;
-
                 if !output.status.success() {
                     let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
                     println!(
@@ -117,7 +137,11 @@ pub fn build_project(release: bool) -> Result<bool> {
             Ok(obj_path)
         })
         .collect::<Result<Vec<_>>>()
-        .map_err(|_| anyhow::anyhow!("One or more files failed to compile"))?;
+        .map_err(|_| anyhow::anyhow!("Compilation failed"))?;
+
+    let entries = json_entries.into_inner().unwrap();
+    let json_str = serde_json::to_string_pretty(&entries)?;
+    fs::write("compile_commands.json", json_str)?;
 
     let output_bin = if cfg!(target_os = "windows") {
         "build/main.exe"
@@ -144,6 +168,10 @@ pub fn build_project(release: bool) -> Result<bool> {
         let mut cmd = Command::new(compiler);
         cmd.args(&object_files);
         cmd.arg("-o").arg(output_bin);
+
+        for lib in &dep_libs {
+            cmd.arg(lib);
+        }
 
         if let Some(build_cfg) = &config.build {
             if let Some(libs) = &build_cfg.libs {
@@ -245,9 +273,13 @@ pub fn run_tests() -> Result<()> {
     });
 
     let mut include_flags = Vec::new();
+    let mut dep_libs = Vec::new();
+
     if let Some(deps) = &config.dependencies {
         if !deps.is_empty() {
-            include_flags = deps::fetch_dependencies(deps)?;
+            let (incs, libs) = deps::fetch_dependencies(deps)?;
+            include_flags = incs;
+            dep_libs = libs;
         }
     }
 
@@ -285,6 +317,10 @@ pub fn run_tests() -> Result<()> {
 
             for flag in &include_flags {
                 cmd.arg(flag);
+            }
+
+            for lib in &dep_libs {
+                cmd.arg(lib);
             }
 
             if let Some(build_cfg) = &config.build {

@@ -66,8 +66,6 @@ fn main() -> Result<()> {
     }
 }
 
-// src/main.rs (Ganti fungsi create_project yang lama dengan ini)
-
 fn create_project(name_opt: &Option<String>, lang_cli: &str, templ_cli: &str) -> Result<()> {
     let name = match name_opt {
         Some(n) => n.clone(),
@@ -106,10 +104,10 @@ version = "0.1.0"
 edition = "c++17"
 
 [build]
-libs = ["raylib", "gdi32", "user32", "shell32", "winmm", "opengl32"]
+libs = ["gdi32", "user32", "shell32", "winmm", "opengl32"]
 
 [dependencies]
-raylib = "https://github.com/raysan5/raylib.git"
+raylib = {{ git = "https://github.com/raysan5/raylib.git", build = "mingw32-make -C src PLATFORM=PLATFORM_DESKTOP", output = "src/libraylib.a" }}
 "#,
                 name
             ),
@@ -188,6 +186,24 @@ edition = "{}"
     let ext = if lang == "c" { "c" } else { "cpp" };
     fs::write(path.join("src").join(format!("main.{}", ext)), main_code)?;
     fs::write(path.join(".gitignore"), "/build\n")?;
+
+    let vscode_dir = path.join(".vscode");
+    fs::create_dir_all(&vscode_dir).context("Failed to create .vscode dir")?;
+
+    let vscode_json = r#"{
+    "configurations": [
+        {
+            "name": "cx-config",
+            "includePath": ["${workspaceFolder}/**"],
+            "compileCommands": "${workspaceFolder}/compile_commands.json",
+            "cStandard": "c17",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}"#;
+
+    fs::write(vscode_dir.join("c_cpp_properties.json"), vscode_json)?;
 
     println!(
         "{} Created new project: {} (template: {})",
