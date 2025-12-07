@@ -1,10 +1,12 @@
-# cx - The Modern C/C++ Project Manager 🚀
+# caxe (cx) 🪓
 
-[![CI/CD Pipeline](https://github.com/DhimasArdinata/cx/actions/workflows/ci.yml/badge.svg)](https://github.com/DhimasArdinata/cx/actions/workflows/ci.yml)
+[![CI/CD Pipeline](https://github.com/dhimasardinata/cx/actions/workflows/ci.yml/badge.svg)](https://github.com/dhimasardinata/cx/actions/workflows/ci.yml)
 
-**cx** is a blazingly fast project manager and build tool for C and C++, written in Rust. It aims to provide a modern developer experience similar to `cargo` (Rust) or `npm` (JS) but for C++.
+**caxe** is a modern project manager for C and C++ designed to **cut through the complexity** of legacy build systems.
 
-> Built for speed, simplicity, and ease of use.
+It provides a unified workflow for scaffolding, building, testing, and managing dependencies—giving C++ developers the modern experience they deserve.
+
+> **Zero Configuration. Lightning Fast. Batteries Included.**
 
 ## ✨ Features
 
@@ -25,7 +27,7 @@ Prerequisites:
 - Clang or GCC installed
 
 ```bash
-git clone https://github.com/DhimasArdinata/cx.git
+git clone https://github.com/dhimasardinata/caxe.git
 cd cx
 cargo install --path .
 ```

@@ -1,7 +1,18 @@
 [package]
-name = "cx"
+name = "caxe"
 version = "0.1.0"
 edition = "2024"
+description = "A modern C/C++ project manager that cuts through build system complexity. Zero config, smart dependencies, and parallel builds."
+authors = ["Dhimas Ardinata dhimasardinatapp@gmail.com"]
+license = "MIT"
+repository = "https://github.com/dhimasardinata/caxe"
+readme = "README.md"
+keywords = ["cpp", "build-tool", "package-manager", "c", "make"]
+categories = ["command-line-utilities", "development-tools::build-utils"]
+
+[[bin]]
+name = "cx"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.100"
