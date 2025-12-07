@@ -46,6 +46,7 @@ enum Commands {
     Clean,
     Test,
     Info,
+    Fmt,
 }
 
 fn main() -> Result<()> {
@@ -71,6 +72,7 @@ fn main() -> Result<()> {
         Commands::Add { lib } => deps::add_dependency(lib),
         Commands::Remove { lib } => deps::remove_dependency(lib),
         Commands::Info => print_info(),
+        Commands::Fmt => builder::format_code(),
     }
 }
 

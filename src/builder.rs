@@ -88,11 +88,18 @@ pub fn build_project(config: &CxConfig, release: bool) -> Result<bool> {
     let obj_dir = build_dir.join("obj");
     fs::create_dir_all(&obj_dir)?;
 
-    let bin_name = if cfg!(target_os = "windows") {
-        format!("{}.exe", config.package.name)
+    let bin_basename = if let Some(build_cfg) = &config.build {
+        build_cfg.bin.clone().unwrap_or(config.package.name.clone())
     } else {
         config.package.name.clone()
     };
+
+    let bin_name = if cfg!(target_os = "windows") {
+        format!("{}.exe", bin_basename)
+    } else {
+        bin_basename
+    };
+
     let output_bin = build_dir.join(&bin_name);
 
     // 3. Fetch Dependencies
@@ -276,10 +283,16 @@ pub fn build_and_run(release: bool, run_args: &[String]) -> Result<()> {
     }
 
     let profile = if release { "release" } else { "debug" };
-    let bin_name = if cfg!(target_os = "windows") {
-        format!("{}.exe", config.package.name)
+    let bin_basename = if let Some(build_cfg) = &config.build {
+        build_cfg.bin.clone().unwrap_or(config.package.name.clone())
     } else {
         config.package.name.clone()
+    };
+
+    let bin_name = if cfg!(target_os = "windows") {
+        format!("{}.exe", bin_basename)
+    } else {
+        bin_basename
     };
 
     let bin_path = Path::new("build").join(profile).join(bin_name);
@@ -451,5 +464,43 @@ pub fn run_tests() -> Result<()> {
         println!("{}", "SOME TESTS FAILED 💀".red().bold());
     }
 
+    Ok(())
+}
+
+pub fn format_code() -> Result<()> {
+    if Command::new("clang-format")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        println!(
+            "{} clang-format not found. Please install it first.",
+            "x".red()
+        );
+        return Ok(());
+    }
+
+    println!("{} Formatting source code...", "🎨".magenta());
+
+    let mut count = 0;
+    for entry in WalkDir::new("src").into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if let Some(ext) = path.extension() {
+            let s = ext.to_string_lossy();
+            if ["cpp", "hpp", "c", "h", "cc", "cxx"].contains(&s.as_ref()) {
+                let status = Command::new("clang-format")
+                    .arg("-i")
+                    .arg("-style=file")
+                    .arg(path)
+                    .status()?;
+
+                if status.success() {
+                    count += 1;
+                }
+            }
+        }
+    }
+
+    println!("{} Formatted {} files.", "✓".green(), count);
     Ok(())
 }

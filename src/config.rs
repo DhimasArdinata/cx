@@ -14,20 +14,12 @@ pub struct CxConfig {
 pub enum Dependency {
     Simple(String),
     Complex {
-        git: String,
+        git: Option<String>,
+        pkg: Option<String>,
         branch: Option<String>,
         build: Option<String>,
         output: Option<String>,
     },
-}
-
-impl Dependency {
-    pub fn get_url(&self) -> String {
-        match self {
-            Dependency::Simple(url) => url.clone(),
-            Dependency::Complex { git, .. } => git.clone(),
-        }
-    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
@@ -42,6 +34,7 @@ pub struct PackageConfig {
 #[derive(Deserialize, Serialize, Debug, Default)]
 pub struct BuildConfig {
     pub compiler: Option<String>,
+    pub bin: Option<String>,
     pub cflags: Option<Vec<String>>,
     pub libs: Option<Vec<String>>,
 }

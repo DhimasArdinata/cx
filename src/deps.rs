@@ -23,12 +23,77 @@ pub fn fetch_dependencies(
     }
 
     for (name, dep_data) in deps {
-        let lib_path = cache_dir.join(name);
-        let url = dep_data.get_url();
+        // --- CASE 1: System Package (pkg-config) ---
+        if let Dependency::Complex {
+            pkg: Some(pkg_name),
+            ..
+        } = dep_data
+        {
+            println!("   {} Resolving system pkg: {}", "🔎".cyan(), pkg_name);
 
+            // 1. Get CFLAGS (Include paths)
+            match Command::new("pkg-config")
+                .args(&["--cflags", pkg_name])
+                .output()
+            {
+                Ok(out) => {
+                    let out_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                    if !out_str.is_empty() {
+                        for flag in out_str.split_whitespace() {
+                            include_flags.push(flag.to_string());
+                        }
+                    }
+                }
+                Err(_) => println!("{} Warning: pkg-config tool not found", "!".yellow()),
+            }
+
+            // 2. Get LIBS (Link paths)
+            match Command::new("pkg-config")
+                .args(&["--libs", pkg_name])
+                .output()
+            {
+                Ok(out) => {
+                    if !out.status.success() {
+                        println!(
+                            "{} Package '{}' not found via pkg-config",
+                            "x".red(),
+                            pkg_name
+                        );
+                    }
+                    let out_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                    if !out_str.is_empty() {
+                        for flag in out_str.split_whitespace() {
+                            link_flags.push(flag.to_string());
+                        }
+                    }
+                }
+                Err(_) => {}
+            }
+            continue;
+        }
+
+        // --- CASE 2: Git Dependency ---
+        let (url, build_script, output_file) = match dep_data {
+            Dependency::Simple(u) => (u.clone(), None, None),
+            Dependency::Complex {
+                git: Some(u),
+                build,
+                output,
+                ..
+            } => (u.clone(), build.clone(), output.clone()),
+            _ => continue,
+        };
+
+        let lib_path = cache_dir.join(name);
+
+        // 1. Download / Clone
         if !lib_path.exists() {
             let pb = ProgressBar::new_spinner();
-            pb.set_style(ProgressStyle::default_spinner().template("{spinner:.green} {msg}")?);
+            pb.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{spinner:.green} {msg}")
+                    .unwrap(),
+            );
             pb.set_message(format!("Downloading {}...", name));
             pb.enable_steady_tick(std::time::Duration::from_millis(100));
 
@@ -44,58 +109,59 @@ pub fn fetch_dependencies(
             println!("   {} Using cached: {}", "⚡".green(), name);
         }
 
-        if let Dependency::Complex { build, output, .. } = dep_data {
-            if let Some(cmd_str) = build {
-                let output_file = output.as_deref().unwrap_or("");
-                let should_build = if !output_file.is_empty() {
-                    !lib_path.join(output_file).exists()
+        // 2. Build Custom Script (If any)
+        if let Some(cmd_str) = build_script {
+            let out_filename = output_file.as_deref().unwrap_or("");
+
+            let should_build = if !out_filename.is_empty() {
+                !lib_path.join(out_filename).exists()
+            } else {
+                true
+            };
+
+            if should_build {
+                println!("   {} Building {}...", "🔨".yellow(), name);
+                let status = if cfg!(target_os = "windows") {
+                    Command::new("cmd")
+                        .args(&["/C", &cmd_str])
+                        .current_dir(&lib_path)
+                        .status()
                 } else {
-                    true
+                    Command::new("sh")
+                        .args(&["-c", &cmd_str])
+                        .current_dir(&lib_path)
+                        .status()
                 };
 
-                if should_build {
-                    println!(
-                        "   {} Building {} (Script: '{}')...",
-                        "🔨".yellow(),
-                        name,
-                        cmd_str
-                    );
-                    let status = if cfg!(target_os = "windows") {
-                        Command::new("cmd")
-                            .args(&["/C", cmd_str])
-                            .current_dir(&lib_path)
-                            .status()?
-                    } else {
-                        Command::new("sh")
-                            .args(&["-c", cmd_str])
-                            .current_dir(&lib_path)
-                            .status()?
-                    };
-
-                    if !status.success() {
+                match status {
+                    Ok(s) if s.success() => {}
+                    _ => {
                         println!("{} Build script failed for {}", "x".red(), name);
                         continue;
                     }
                 }
             }
-
-            if let Some(out_file) = output {
-                let full_lib_path = lib_path.join(out_file);
-                if full_lib_path.exists() {
-                    link_flags.push(full_lib_path.to_string_lossy().to_string());
-                } else {
-                    println!(
-                        "{} Warning: Output file not found: {}",
-                        "!".yellow(),
-                        full_lib_path.display()
-                    );
-                }
-            }
         }
 
+        // 3. Register Includes & Libs
+        // Auto-add standard paths
         include_flags.push(format!("-I{}", lib_path.display()));
         include_flags.push(format!("-I{}/include", lib_path.display()));
         include_flags.push(format!("-I{}/src", lib_path.display()));
+
+        // Add explicit output library file
+        if let Some(out_file) = output_file {
+            let full_lib_path = lib_path.join(out_file);
+            if full_lib_path.exists() {
+                link_flags.push(full_lib_path.to_string_lossy().to_string());
+            } else {
+                println!(
+                    "{} Warning: Output file not found: {}",
+                    "!".yellow(),
+                    full_lib_path.display()
+                );
+            }
+        }
     }
 
     Ok((include_flags, link_flags))
