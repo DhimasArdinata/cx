@@ -60,7 +60,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.target }}-cargo-
 
       - name: Build Binary
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} --locked
 
       - name: Prepare Artifact (Unix)
         if: matrix.os != 'windows-latest'
