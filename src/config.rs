@@ -40,6 +40,7 @@ pub struct PackageConfig {
 
 #[derive(Deserialize, Serialize, Debug, Default)]
 pub struct BuildConfig {
+    pub compiler: Option<String>,
     pub cflags: Option<Vec<String>>,
     pub libs: Option<Vec<String>>,
 }

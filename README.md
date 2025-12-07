@@ -118,6 +118,7 @@ version = "0.1.0"
 edition = "c++20"
 
 [build]
+compiler = "g++" # Optional: Change default compiler (clang++)
 cflags = ["-O2", "-Wall"]
 libs = ["pthread", "m"] # Link system libraries
 

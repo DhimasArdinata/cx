@@ -45,6 +45,7 @@ enum Commands {
     Watch,
     Clean,
     Test,
+    Info,
 }
 
 fn main() -> Result<()> {
@@ -63,6 +64,7 @@ fn main() -> Result<()> {
         Commands::Test => builder::run_tests(),
         Commands::Add { lib } => deps::add_dependency(lib),
         Commands::Remove { lib } => deps::remove_dependency(lib),
+        Commands::Info => print_info(),
     }
 }
 
@@ -212,5 +214,31 @@ edition = "{}"
         template.cyan()
     );
     println!("  cd {}\n  cx run", name);
+    Ok(())
+}
+
+fn print_info() -> Result<()> {
+    println!("caxe (cx) v{}", env!("CARGO_PKG_VERSION"));
+    println!("The Modern C/C++ Project Manager 🪓");
+    println!("------------------------------------");
+
+    let home = dirs::home_dir().unwrap_or_default();
+    println!("Cache Dir : {}", home.join(".cx").join("cache").display());
+
+    let compilers = vec!["clang++", "g++", "gcc", "cl"];
+    println!("Compilers detected:");
+    for c in compilers {
+        let status = if std::process::Command::new(c)
+            .arg("--version")
+            .output()
+            .is_ok()
+        {
+            "Installed".green()
+        } else {
+            "Not Found".red()
+        };
+        println!("  - {:<10} : {}", c, status);
+    }
+
     Ok(())
 }

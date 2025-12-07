@@ -12,8 +12,18 @@ use std::sync::mpsc::channel;
 use std::time::{Duration, Instant};
 use walkdir::WalkDir;
 
-fn get_compiler(has_cpp: bool) -> &'static str {
-    if has_cpp { "clang++" } else { "clang" }
+fn get_compiler(config: &CxConfig, has_cpp: bool) -> String {
+    if let Some(build) = &config.build {
+        if let Some(compiler) = &build.compiler {
+            return compiler.clone();
+        }
+    }
+
+    if has_cpp {
+        "clang++".to_string()
+    } else {
+        "clang".to_string()
+    }
 }
 
 pub fn build_project(release: bool) -> Result<bool> {
@@ -62,7 +72,7 @@ pub fn build_project(release: bool) -> Result<bool> {
         return Ok(false);
     }
 
-    let compiler = get_compiler(has_cpp);
+    let compiler = get_compiler(&config, has_cpp);
     let common_flags = include_flags.clone();
 
     let json_entries = std::sync::Mutex::new(Vec::new());
@@ -291,17 +301,18 @@ pub fn run_tests() -> Result<()> {
 
     for entry in WalkDir::new("tests").into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
-        if path
+        let is_cpp = path
             .extension()
-            .map_or(false, |ext| ext == "cpp" || ext == "cc")
-        {
+            .map_or(false, |ext| ext == "cpp" || ext == "cc" || ext == "cxx");
+        let is_c = path.extension().map_or(false, |ext| ext == "c");
+        if is_cpp || is_c {
             total_tests += 1;
             let test_name = path.file_stem().unwrap().to_string_lossy();
             let output_bin = format!("build/tests/{}", test_name);
 
             print!("   TEST {} ... ", test_name.bold());
 
-            let compiler = "clang++";
+            let compiler = get_compiler(&config, is_cpp);
             let mut cmd = Command::new(compiler);
             cmd.arg(path);
             cmd.arg("-o").arg(&output_bin);
