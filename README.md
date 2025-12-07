@@ -1,7 +1,7 @@
 # caxe (cx) 🪓
 
 [![CI](https://github.com/dhimasardinata/caxe/actions/workflows/ci.yml/badge.svg)](https://github.com/dhimasardinata/caxe/actions/workflows/ci.yml)
-[![Release](https://github.com/dhimasardinata/caxe/actions/workflows/release.yml/badge.svg)](https://github.com/dhimasardinata/caxe/actions/workflows/release.yml)
+[![Release](https://github.com/dhimasardinata/caxe/actions/workflows/release.yml/badge.svg?event=push)](https://github.com/dhimasardinata/caxe/actions/workflows/release.yml)
 [![Crates.io](https://img.shields.io/crates/v/caxe.svg)](https://crates.io/crates/caxe)
 
 **caxe** _(pronounced "c-axe")_ is a modern project manager for C and C++ designed to **cut through the complexity** of legacy build systems.
