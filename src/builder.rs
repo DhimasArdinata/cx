@@ -26,8 +26,30 @@ fn get_compiler(config: &CxConfig, has_cpp: bool) -> String {
     }
 }
 
+fn run_script(script: &str, project_dir: &Path) -> Result<()> {
+    println!("   {} Running script: '{}'...", "📜".magenta(), script);
+
+    let status = if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(&["/C", script])
+            .current_dir(project_dir)
+            .status()?
+    } else {
+        Command::new("sh")
+            .args(&["-c", script])
+            .current_dir(project_dir)
+            .status()?
+    };
+
+    if !status.success() {
+        return Err(anyhow::anyhow!("Script failed"));
+    }
+    Ok(())
+}
+
 pub fn build_project(release: bool) -> Result<bool> {
     let start_time = Instant::now();
+    let current_dir = std::env::current_dir()?;
 
     if !Path::new("cx.toml").exists() {
         println!("{} Error: cx.toml not found.", "x".red());
@@ -35,6 +57,15 @@ pub fn build_project(release: bool) -> Result<bool> {
     }
     let config_str = fs::read_to_string("cx.toml")?;
     let config: CxConfig = toml::from_str(&config_str).context("Failed to parse cx.toml")?;
+
+    if let Some(scripts) = &config.scripts {
+        if let Some(pre) = &scripts.pre_build {
+            if let Err(e) = run_script(pre, Path::new(&current_dir)) {
+                println!("{} Pre-build script failed: {}", "x".red(), e);
+                return Ok(false);
+            }
+        }
+    }
 
     let profile = if release { "release" } else { "debug" };
     let build_dir = Path::new("build").join(profile);
@@ -194,6 +225,15 @@ pub fn build_project(release: bool) -> Result<bool> {
             println!("{} Linking failed", "x".red());
             return Ok(false);
         }
+
+        if let Some(scripts) = &config.scripts {
+            if let Some(post) = &scripts.post_build {
+                if let Err(e) = run_script(post, Path::new(&current_dir)) {
+                    println!("{} Post-build script failed: {}", "x".red(), e);
+                }
+            }
+        }
+
         println!(
             "{} Build finished in {:.2?}",
             "✓".green(),

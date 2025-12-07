@@ -6,6 +6,7 @@ pub struct CxConfig {
     pub package: PackageConfig,
     pub dependencies: Option<HashMap<String, Dependency>>,
     pub build: Option<BuildConfig>,
+    pub scripts: Option<ScriptsConfig>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -47,4 +48,10 @@ pub struct BuildConfig {
 
 fn default_edition() -> String {
     "c++20".to_string()
+}
+
+#[derive(Deserialize, Serialize, Debug, Default)]
+pub struct ScriptsConfig {
+    pub pre_build: Option<String>,
+    pub post_build: Option<String>,
 }

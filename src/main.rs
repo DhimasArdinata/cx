@@ -128,9 +128,46 @@ int main() {
 }
 "#,
         ),
-        "web" => (
-            format!(
-                r#"[package]
+        "web" => {
+            if lang == "c" {
+                (
+                    format!(
+                        r#"[package]
+name = "{}"
+version = "0.1.0"
+edition = "c17"
+
+[build]
+libs = ["ws2_32"]
+
+[dependencies]
+mongoose = {{ git = "https://github.com/cesanta/mongoose.git", build = "clang -c mongoose.c -o libmongoose.a", output = "libmongoose.a" }}
+"#,
+                        name
+                    ),
+                    r#"#include "mongoose.h"
+
+static void fn(struct mg_connection* c, int ev, void* ev_data) {
+  if (ev == MG_EV_HTTP_MSG) {
+    mg_http_reply(c, 200, "", "<h1>Hello from C (Mongoose)!</h1>\n");
+  }
+}
+
+int main() {
+  struct mg_mgr mgr;
+  mg_mgr_init(&mgr);
+  printf("Server running at http://localhost:8000\n");
+  mg_http_listen(&mgr, "http://0.0.0.0:8000", fn, NULL);
+  for (;;) mg_mgr_poll(&mgr, 1000);
+  mg_mgr_free(&mgr);
+  return 0;
+}
+"#,
+                )
+            } else {
+                (
+                    format!(
+                        r#"[package]
 name = "{}"
 version = "0.1.0"
 edition = "c++17"
@@ -142,21 +179,23 @@ libs = ["ws2_32"]
 [dependencies]
 httplib = "https://github.com/yhirose/cpp-httplib.git"
 "#,
-                name
-            ),
-            r#"#include <iostream>
+                        name
+                    ),
+                    r#"#include <iostream>
 #include "httplib.h"
 int main() {
     httplib::Server svr;
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content("<h1>Hello from cx template!</h1>", "text/html");
+        res.set_content("<h1>Hello from cx (C++)!</h1>", "text/html");
     });
     std::cout << "Server at http://localhost:8080" << std::endl;
     svr.listen("0.0.0.0", 8080);
     return 0;
 }
 "#,
-        ),
+                )
+            }
+        }
         _ => {
             let dep = if lang == "cpp" {
                 "\n[dependencies]\n# json = \"...\""

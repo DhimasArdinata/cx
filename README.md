@@ -136,6 +136,10 @@ libs = ["pthread", "m"] # Link system libraries
 # Dependencies are automatically fetched & linked!
 json = "https://github.com/nlohmann/json.git"
 fmt = "https://github.com/fmtlib/fmt.git"
+
+[scripts]
+pre_build = "echo Compiling..."
+post_build = "copy assets build/debug/"
 ```
 
 ## 🖼️ Showcase
