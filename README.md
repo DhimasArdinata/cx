@@ -1,45 +1,44 @@
 # caxe (cx) 🪓
 
-[![CI/CD Pipeline](https://github.com/dhimasardinata/cx/actions/workflows/ci.yml/badge.svg)](https://github.com/dhimasardinata/cx/actions/workflows/ci.yml)
+[![CI/CD Pipeline](https://github.com/dhimasardinata/cx/actions/workflows/release.yml/badge.svg)](https://github.com/dhimasardinata/cx/actions/workflows/release.yml)
+[![Crates.io](https://img.shields.io/crates/v/caxe.svg)](https://crates.io/crates/caxe)
 
 **caxe** _(pronounced "c-axe")_ is a modern project manager for C and C++ designed to **cut through the complexity** of legacy build systems.
 
-It provides a unified workflow for scaffolding, building, testing, and managing dependencies—giving C++ developers the modern experience they deserve.
+It provides a unified workflow for scaffolding, building, testing, formatting, and managing dependencies—giving C++ developers the modern experience they deserve.
 
 > **Zero Configuration. Lightning Fast. Batteries Included.**
 
 ## ✨ Features
 
 - **⚡ Zero Config Start**: Create a Hello World C++ project in seconds.
-- **📑 Project Templates**: Start quickly with presets for Raylib or Web Servers.
-- **📦 Smart Dependency Management**: Define dependencies in `cx.toml` or use `cx add`. `cx` automatically downloads libraries from Git and handles linking.
+- **📦 Smart Dependency Management**:
+  - **Git Libraries**: Automatically downloads & builds libraries from GitHub.
+  - **System Packages**: Native support for `pkg-config` (e.g., GTK, OpenSSL).
+- **🎨 Code Formatting**: Built-in `cx fmt` command to keep your code clean (via `clang-format`).
+- **🚀 Parallel & Incremental Builds**: Lock-free parallel compilation engine for maximum speed.
 - **💾 Global Caching**: Libraries are downloaded once and shared across all projects.
-- **🚀 Parallel & Incremental Builds**: Uses multi-threading to compile files simultaneously and only recompiles what changed.
 - **👁️ Watch Mode**: Automatically recompiles and runs your project when you save a file.
-- **🧪 Built-in Testing**: Run unit tests easily without configuring external frameworks.
-- **🛠️ Custom Configuration**: Support for C++17/20, custom compiler flags, and system linking.
+- **🛠️ Flexible Configuration**: Custom binary names, environment variable support (`CC`, `CXX`), and build scripts.
 
 ## 📦 Installation
 
-Prerequisites:
+### Option 1: Download Binary (Recommended)
 
-- Rust (Cargo)
-- Clang or GCC installed
+No Rust or Cargo required. Download the latest release for your OS:
 
-### Option 1: Install from Crates.io (Recommended)
+- **Windows**: [Download cx-windows.exe](https://github.com/dhimasardinata/caxe/releases/latest)
+- **Linux**: [Download cx-linux](https://github.com/dhimasardinata/caxe/releases/latest)
+- **macOS**: [Download cx-macos](https://github.com/dhimasardinata/caxe/releases/latest)
 
-If you have Rust installed, this is the easiest way.
+> Add the binary to your system PATH to run it from anywhere.
+
+### Option 2: Install via Cargo
+
+If you are a Rust developer:
 
 ```bash
 cargo install caxe
-```
-
-### Option 2: Build from Source
-
-```bash
-git clone https://github.com/dhimassardinata/caxe.git
-cd caxe
-cargo install --path .
 ```
 
 ## 🚀 Usage
@@ -61,28 +60,29 @@ cx new my-game --template raylib
 
 ### 2. Manage Dependencies
 
-Add or remove libraries directly from the CLI.
+Define dependencies in `cx.toml`. `caxe` supports both Git repositories and System Packages (`pkg-config`).
 
-```bash
-# Add a library (supports 'user/repo' or full git URL)
-cx add fmtlib/fmt
-cx add nlohmann/json
+```toml
+[dependencies]
+# 1. Git Dependency (Auto download & link)
+json = "https://github.com/nlohmann/json.git"
 
-# Remove a library
-cx remove fmt
+# 2. System Dependency (Uses pkg-config)
+gtk4 = { pkg = "gtk4" }
+openssl = { pkg = "openssl" }
 ```
 
 ### 3. Build & Run
 
 ```bash
-# Compile only (useful for checking errors)
-cx build
-
 # Compile and Run
 cx run
 
 # Run with optimizations (Release mode)
 cx run --release
+
+# Format code (Requires clang-format)
+cx fmt
 ```
 
 ### 4. Watch mode (Auto-reload)
@@ -93,76 +93,53 @@ Coding without manually recompiling every time.
 cx watch
 ```
 
-### 5. Unit Testing 🧪
-
-No need for complex test runners like GoogleTest or Catch2 for simple projects.
-
-1. Create a `tests/` directory in your project root.
-2. Add `.cpp` files (e.g., `tests/test_math.cpp`).
-3. Use standard `assert` or return `0` for success.
-
-```cpp
-#include <cassert>
-
-int main() {
-    int x = 10;
-    assert(x + 5 == 15); // If this fails, the test fails
-    return 0;
-}
-```
-
-Run the tests:
-
-```bash
-cx test
-```
-
 ## ⚙️ Configuration (`cx.toml`)
 
-No more confusing Makefiles or CMakeLists.
+Example of a full configuration file:
 
 ```toml
 [package]
-name = "my-game"
+name = "my-awesome-app"
 version = "0.1.0"
 edition = "c++20"
 
 [build]
-compiler = "g++" # Optional: Change default compiler (clang++)
-cflags = ["-O2", "-Wall"]
-libs = ["pthread", "m"] # Link system libraries
+# Optional: Override output binary name (default is package name)
+bin = "app"
+# Optional: Custom flags
+cflags = ["-O2", "-Wall", "-Wextra"]
+libs = ["pthread", "m"]
 
 [dependencies]
-# Dependencies are automatically fetched & linked!
-json = "https://github.com/nlohmann/json.git"
 fmt = "https://github.com/fmtlib/fmt.git"
+sdl2 = { pkg = "sdl2" }
 
 [scripts]
 pre_build = "echo Compiling..."
-post_build = "copy assets build/debug/"
+post_build = "echo Done!"
 ```
 
-## 🖼️ Showcase
+## 🛠️ Advanced
 
-Experience a modern development workflow. Here is an example of running a C++ Web Server (`cpp-httplib`) with zero manual configuration.
+### Environment Variables
 
-### 1. The Build Process
+`caxe` respects standard environment variables for compiler selection:
 
-`cx` handles dependency fetching, caching, and compiling automatically.
+```bash
+# Linux/Mac
+CXX=clang++-14 cx run
 
-![Terminal Build Demo](assets/demo-terminal.png)
+# Windows (PowerShell)
+$env:CXX="g++"; cx run
+```
 
-### 2. The Result
+### Unit Testing
 
-The C++ server is up and running instantly.
+Create a `tests/` directory and add `.cpp` files. `caxe` will compile and run them automatically.
 
-![Browser Output Demo](assets/demo-browser.png)
-
-### 3. Advanced Libraries (Raylib)
-
-`cx` can even compile complex libraries like Raylib from source using custom build scripts!
-
-![Raylib Game Demo](assets/demo-raylib.png)
+```bash
+cx test
+```
 
 ## 📝 License
 
