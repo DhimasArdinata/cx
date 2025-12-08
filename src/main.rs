@@ -38,6 +38,12 @@ enum Commands {
     },
     Add {
         lib: String,
+        #[arg(long)]
+        tag: Option<String>,
+        #[arg(long)]
+        branch: Option<String>,
+        #[arg(long)]
+        rev: Option<String>,
     },
     Remove {
         lib: String,
@@ -47,6 +53,7 @@ enum Commands {
     Test,
     Info,
     Fmt,
+    Update,
 }
 
 fn main() -> Result<()> {
@@ -69,10 +76,16 @@ fn main() -> Result<()> {
         Commands::Watch => builder::watch(),
         Commands::Clean => builder::clean(),
         Commands::Test => builder::run_tests(),
-        Commands::Add { lib } => deps::add_dependency(lib),
+        Commands::Add {
+            lib,
+            tag,
+            branch,
+            rev,
+        } => deps::add_dependency(lib, tag.clone(), branch.clone(), rev.clone()),
         Commands::Remove { lib } => deps::remove_dependency(lib),
         Commands::Info => print_info(),
         Commands::Fmt => builder::format_code(),
+        Commands::Update => deps::update_dependencies(),
     }
 }
 

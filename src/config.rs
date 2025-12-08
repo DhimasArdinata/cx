@@ -12,11 +12,18 @@ pub struct CxConfig {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Dependency {
+    // Case: "https://github.com/..."
     Simple(String),
+
+    // Case: { git = "...", tag = "v1.0" }
     Complex {
         git: Option<String>,
         pkg: Option<String>,
+        // Pinning Features
         branch: Option<String>,
+        tag: Option<String>,
+        rev: Option<String>,
+        // Build Features
         build: Option<String>,
         output: Option<String>,
     },
