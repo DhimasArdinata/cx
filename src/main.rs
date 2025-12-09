@@ -10,6 +10,7 @@ mod config;
 mod deps;
 mod registry;
 mod upgrade;
+mod lock;
 
 #[derive(Parser)]
 #[command(name = "cx")]
@@ -57,6 +58,9 @@ enum Commands {
     Fmt,
     Update,
     Upgrade,
+    Search {
+        query: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -68,6 +72,19 @@ fn main() -> Result<()> {
             lang,
             template,
         } => create_project(name, lang, template),
+
+        Commands::Search { query } => {
+            let results = registry::search(query);
+            if results.is_empty() {
+                println!("{} No results found for '{}'", "x".red(), query);
+            } else {
+                println!("{} Found {} results:", "🔍".blue(), results.len());
+                for (name, url) in results {
+                    println!("  {} - {}", name.bold().green(), url);
+                }
+            }
+            Ok(())
+        }
 
         Commands::Build { release } => {
             let config = builder::load_config()?;

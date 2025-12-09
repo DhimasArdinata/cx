@@ -15,6 +15,8 @@ pub fn fetch_dependencies(
     let cache_dir = home_dir.join(".cx").join("cache");
     fs::create_dir_all(&cache_dir)?;
 
+    let mut lockfile = crate::lock::LockFile::load().unwrap_or_default();
+
     let mut include_flags = Vec::new();
     let mut link_flags = Vec::new();
 
@@ -126,12 +128,20 @@ pub fn fetch_dependencies(
             }
         };
 
-        // B. Pinning / Checkout Logic (v0.1.5 Feature)
+        // B. Pinning / Checkout Logic (v0.1.5 + v0.1.8 Lockfile)
         let mut obj_to_checkout = None;
         let mut checkout_msg = String::new();
+        
+        // Lockfile Check
+        let mut locked_commit = None;
+        if let Some(lock_entry) = lockfile.get(name) {
+            if lock_entry.git == url {
+                 locked_commit = Some(lock_entry.rev.clone());
+            }
+        }
 
         if let Some(r) = rev {
-            // 1. Checkout specific commit hash
+            // 1. Explicit Config Commit (Highest Priority)
             if let Ok(oid) = git2::Oid::from_str(&r) {
                 if let Ok(obj) = repo.find_object(oid, None) {
                     obj_to_checkout = Some(obj);
@@ -139,7 +149,7 @@ pub fn fetch_dependencies(
                 }
             }
         } else if let Some(t) = tag {
-            // 2. Checkout specific Tag
+            // 2. Explicit Tag
             let refname = format!("refs/tags/{}", t);
             if let Ok(r_ref) = repo.find_reference(&refname) {
                 if let Ok(obj) = r_ref.peel_to_commit() {
@@ -148,7 +158,7 @@ pub fn fetch_dependencies(
                 }
             }
         } else if let Some(b) = branch {
-            // 3. Checkout specific Branch
+            // 3. Explicit Branch
             if let Ok(r_ref) = repo.find_branch(&b, git2::BranchType::Local) {
                 if let Ok(obj) = r_ref.get().peel_to_commit() {
                     obj_to_checkout = Some(obj.into_object());
@@ -163,12 +173,28 @@ pub fn fetch_dependencies(
                     }
                 }
             }
+        } else if let Some(rev) = locked_commit {
+            // 4. Lockfile Commit (Zero Config Reproducibility)
+             if let Ok(oid) = git2::Oid::from_str(&rev) {
+                if let Ok(obj) = repo.find_object(oid, None) {
+                    obj_to_checkout = Some(obj);
+                    checkout_msg = format!("locked {}", &rev[..7]);
+                }
+            }
         }
 
         if let Some(obj) = obj_to_checkout {
             let _ = repo.set_head_detached(obj.id());
             let _ = repo.checkout_tree(&obj, None);
             println!("   {} Locked to {}", "📌".blue(), checkout_msg);
+        }
+        
+        // Update Lockfile with current HEAD
+        if let Ok(head) = repo.head() {
+            if let Ok(target) = head.peel_to_commit() {
+                let current_hash = target.id().to_string();
+                lockfile.insert(name.clone(), url.clone(), current_hash);
+            }
         }
 
         // C. Build Custom Script (If any)
@@ -224,6 +250,7 @@ pub fn fetch_dependencies(
         }
     }
 
+    lockfile.save()?;
     Ok((include_flags, link_flags))
 }
 
@@ -238,7 +265,6 @@ pub fn add_dependency(
         return Ok(());
     }
 
-    // 1. Parse Input (Short format vs URL)
     // 1. Parse Input (Alias -> Short format -> URL)
     let (name, url) = if let Some(resolved_url) = crate::registry::resolve_alias(lib_input) {
         // Case A: Alias found (e.g. "raylib")
@@ -372,6 +398,8 @@ pub fn update_dependencies() -> Result<()> {
                         let mut remote = repo.find_remote("origin")?;
                         remote.fetch(&["HEAD"], None, None)?;
 
+                        // Force checking out correct HEAD
+                        // Note: For 'update', we typically want to pull latest.
                         let status = if cfg!(target_os = "windows") {
                             Command::new("cmd")
                                 .args(&["/C", "git pull origin HEAD"])

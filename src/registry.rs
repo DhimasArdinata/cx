@@ -85,3 +85,13 @@ impl Registry {
 pub fn resolve_alias(name: &str) -> Option<String> {
     Registry::get(name)
 }
+
+pub fn search(query: &str) -> Vec<(String, String)> {
+    let registry = Registry::load().unwrap_or_else(|_| Registry::default());
+    let query = query.to_lowercase();
+    
+    registry.0.iter()
+        .filter(|(k, _)| k.to_lowercase().contains(&query))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
+}
