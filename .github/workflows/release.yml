@@ -32,7 +32,7 @@ jobs:
             name: cx-macos-arm64
 
           # macOS (Intel)
-          - os: macos-13
+          - os: macos-15
             target: x86_64-apple-darwin
             name: cx-macos-intel
 
