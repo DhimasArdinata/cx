@@ -95,3 +95,4 @@ jobs:
             artifacts/cx-macos-arm64/cx-macos-arm64
             artifacts/cx-macos-intel/cx-macos-intel
           generate_release_notes: true
+          draft: true
