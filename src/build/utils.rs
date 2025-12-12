@@ -41,6 +41,19 @@ pub fn get_compiler(config: &CxConfig, has_cpp: bool) -> String {
 
 // --- Helper: Run Script (Cross Platform) ---
 pub fn run_script(script: &str, project_dir: &Path) -> Result<()> {
+    // Check if script file exists with .rhai extension
+    if script.ends_with(".rhai") {
+        let script_path = project_dir.join(script);
+        if script_path.exists() {
+            println!("   {} Running Rhai script: '{}'...", "📜".magenta(), script);
+            let engine = rhai::Engine::new();
+            engine
+                .run_file(script_path)
+                .map_err(|e| anyhow::anyhow!("Rhai script failed: {}", e))?;
+            return Ok(());
+        }
+    }
+
     println!("   {} Running script: '{}'...", "📜".magenta(), script);
     let status = if cfg!(target_os = "windows") {
         Command::new("cmd")
