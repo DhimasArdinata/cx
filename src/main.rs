@@ -10,6 +10,7 @@ mod cache;
 mod checker;
 mod config;
 mod deps;
+mod doc;
 mod lock;
 mod registry;
 mod upgrade;
@@ -58,6 +59,7 @@ enum Commands {
     Test,
     Info,
     Fmt,
+    Doc,
     Check,
     Update,
     Upgrade,
@@ -120,6 +122,7 @@ fn main() -> Result<()> {
         Commands::Remove { lib } => deps::remove_dependency(lib),
         Commands::Info => print_info(),
         Commands::Fmt => checker::format_code(),
+        Commands::Doc => doc::generate_docs(),
         Commands::Check => checker::check_code(),
         Commands::Update => deps::update_dependencies(),
         Commands::Upgrade => upgrade::check_and_upgrade(),

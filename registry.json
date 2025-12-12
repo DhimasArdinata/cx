@@ -3,7 +3,6 @@
     "sdl2": "https://github.com/libsdl-org/SDL.git",
     "sfml": "https://github.com/SFML/SFML.git",
     "json": "https://github.com/nlohmann/json.git",
-    "nlohmann_json": "https://github.com/nlohmann/json.git",
     "fmt": "https://github.com/fmtlib/fmt.git",
     "spdlog": "https://github.com/gabime/spdlog.git",
     "mongoose": "https://github.com/cesanta/mongoose.git",
