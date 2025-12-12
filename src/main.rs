@@ -13,6 +13,7 @@ mod deps;
 mod doc;
 mod lock;
 mod registry;
+mod templates;
 mod upgrade;
 
 #[derive(Parser)]
@@ -157,9 +158,13 @@ fn init_project() -> Result<()> {
         .prompt()?;
 
     let lang = Select::new("Language?", vec!["cpp", "c"]).prompt()?;
-    let template = Select::new("Template?", vec!["console", "web", "raylib"]).prompt()?;
+    let template = Select::new(
+        "Template?",
+        vec!["console", "web", "raylib", "sdl2", "opengl"],
+    )
+    .prompt()?;
 
-    let (toml_content, main_code) = get_template(&name, lang, template);
+    let (toml_content, main_code) = templates::get_template(&name, lang, template);
 
     fs::write("cx.toml", toml_content)?;
 
@@ -197,7 +202,7 @@ fn create_project(name_opt: &Option<String>, lang_cli: &str, templ_cli: &str) ->
     };
 
     let template = if name_opt.is_none() {
-        let options = vec!["console", "web", "raylib"];
+        let options = vec!["console", "web", "raylib", "sdl2", "opengl"];
         Select::new("Select a template:", options).prompt()?
     } else {
         templ_cli
@@ -220,7 +225,7 @@ fn create_project(name_opt: &Option<String>, lang_cli: &str, templ_cli: &str) ->
     fs::create_dir_all(path.join("src")).context("Failed to create src")?;
 
     // 3. Get Template Content (Refactored)
-    let (toml_content, main_code) = get_template(&name, lang, template);
+    let (toml_content, main_code) = templates::get_template(&name, lang, template);
 
     // 4. Write Files
     let ext = if lang == "c" { "c" } else { "cpp" };
@@ -307,136 +312,4 @@ fn print_info() -> Result<()> {
     }
 
     Ok(())
-}
-
-// --- Template Helper ---
-fn get_template(name: &str, lang: &str, template: &str) -> (String, String) {
-    match template {
-        "raylib" => (
-            format!(
-                r#"[package]
-name = "{}"
-version = "0.1.0"
-edition = "c++17"
-
-[build]
-libs = ["gdi32", "user32", "shell32", "winmm", "opengl32"]
-
-[dependencies]
-raylib = {{ git = "https://github.com/raysan5/raylib.git", build = "mingw32-make -C src PLATFORM=PLATFORM_DESKTOP", output = "src/libraylib.a" }}
-"#,
-                name
-            ),
-            r#"#include "raylib.h"
-int main() {
-    InitWindow(800, 600, "cx + raylib");
-    SetTargetFPS(60);
-    while (!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        DrawText("Hello Raylib!", 190, 200, 20, LIGHTGRAY);
-        EndDrawing();
-    }
-    CloseWindow();
-    return 0;
-}
-"#
-            .to_string(),
-        ),
-        "web" => {
-            if lang == "c" {
-                (
-                    format!(
-                        r#"[package]
-name = "{}"
-version = "0.1.0"
-edition = "c17"
-
-[build]
-libs = ["ws2_32"]
-
-[dependencies]
-mongoose = {{ git = "https://github.com/cesanta/mongoose.git", build = "clang -c mongoose.c -o libmongoose.a", output = "libmongoose.a" }}
-"#,
-                        name
-                    ),
-                    r#"#include "mongoose.h"
-
-static void fn(struct mg_connection* c, int ev, void* ev_data) {
-  if (ev == MG_EV_HTTP_MSG) {
-    mg_http_reply(c, 200, "", "<h1>Hello from C (Mongoose)!</h1>\n");
-  }
-}
-
-int main() {
-  struct mg_mgr mgr;
-  mg_mgr_init(&mgr);
-  printf("Server running at http://localhost:8000\n");
-  mg_http_listen(&mgr, "http://0.0.0.0:8000", fn, NULL);
-  for (;;) mg_mgr_poll(&mgr, 1000);
-  mg_mgr_free(&mgr);
-  return 0;
-}
-"#
-                    .to_string(),
-                )
-            } else {
-                (
-                    format!(
-                        r#"[package]
-name = "{}"
-version = "0.1.0"
-edition = "c++17"
-
-[build]
-cflags = ["-D_WIN32_WINNT=0x0A00"]
-libs = ["ws2_32"]
-
-[dependencies]
-httplib = "https://github.com/yhirose/cpp-httplib.git"
-"#,
-                        name
-                    ),
-                    r#"#include <iostream>
-#include "httplib.h"
-int main() {
-    httplib::Server svr;
-    svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content("<h1>Hello from cx (C++)!</h1>", "text/html");
-    });
-    std::cout << "Server at http://localhost:8080" << std::endl;
-    svr.listen("0.0.0.0", 8080);
-    return 0;
-}
-"#
-                    .to_string(),
-                )
-            }
-        }
-        _ => {
-            let dep = if lang == "cpp" {
-                "\n[dependencies]\n# json = \"...\""
-            } else {
-                ""
-            };
-            let cfg = format!(
-                r#"[package]
-name = "{}"
-version = "0.1.0"
-edition = "{}"
-{}
-"#,
-                name,
-                if lang == "c" { "c17" } else { "c++20" },
-                dep
-            );
-
-            let code = if lang == "c" {
-                "#include <stdio.h>\nint main() { printf(\"Hello cx!\\n\"); return 0; }"
-            } else {
-                "#include <iostream>\nint main() { std::cout << \"Hello cx!\" << std::endl; return 0; }"
-            };
-            (cfg, code.to_string())
-        }
-    }
 }

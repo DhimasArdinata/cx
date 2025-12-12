@@ -1,12 +1,114 @@
-pub struct ProjectTemplate {
-    pub toml: String,
-    pub code: String,
+pub fn get_template(name: &str, lang: &str, template: &str) -> (String, String) {
+    match template {
+        "sdl2" => (
+            format!(
+                r#"[package]
+name = "{}"
+version = "0.1.0"
+edition = "c++17"
+
+[build]
+libs = ["user32", "gdi32", "shell32", "SDL2", "SDL2main"]
+cflags = ["/Dmain=SDL_main"] 
+
+[dependencies]
+SDL2 = {{ git = "https://github.com/libsdl-org/SDL.git", tag = "release-2.30.0", build = "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release", output = "build/Release/SDL2.lib" }}
+"#,
+                name
+            ),
+            r#"#include <SDL.h>
+#include <iostream>
+
+int main(int argc, char* argv[]) {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
+        return 1;
+    }
+
+    SDL_Window* window = SDL_CreateWindow(
+        "SDL2 Window (caxe)",
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        800, 600,
+        SDL_WINDOW_SHOWN
+    );
+
+    if (window == nullptr) {
+        std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
+        return 1;
+    }
+
+    SDL_Surface* screenSurface = SDL_GetWindowSurface(window);
+    SDL_FillRect(screenSurface, nullptr, SDL_MapRGB(screenSurface->format, 0xFF, 0xFF, 0xFF));
+    SDL_UpdateWindowSurface(window);
+
+    SDL_Delay(2000);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return 0;
+}
+"#
+            .to_string(),
+        ),
+        "opengl" => (
+            format!(
+                r#"[package]
+name = "{}"
+version = "0.1.0"
+edition = "c++17"
+
+[build]
+libs = ["user32", "gdi32", "shell32", "opengl32", "glfw3"]
+
+[dependencies]
+glfw = {{ git = "https://github.com/glfw/glfw.git", tag = "3.3.9", build = "cmake -S . -B build -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF && cmake --build build --config Release", output = "build/src/Release/glfw3.lib" }}
+glad = {{ git = "https://github.com/Dav1dde/glad.git", branch = "master", build = "python -m glad --generator=c --out-path=dist", output = "dist/src/glad.c" }}
+"#,
+                name
+            ),
+            r#"#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <iostream>
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
 }
 
-pub fn get(template: &str, name: &str, lang: &str) -> ProjectTemplate {
-    match template {
-        "raylib" => ProjectTemplate {
-            toml: format!(
+int main() {
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW" << std::endl;
+        return -1;
+    }
+
+    GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL (caxe)", NULL, NULL);
+    if (window == NULL) {
+        std::cerr << "Failed to create window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+    while (!glfwWindowShouldClose(window)) {
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    glfwTerminate();
+    return 0;
+}
+"#
+            .to_string(),
+        ),
+        "raylib" => (
+            format!(
                 r#"[package]
 name = "{}"
 version = "0.1.0"
@@ -20,7 +122,7 @@ raylib = {{ git = "https://github.com/raysan5/raylib.git", build = "mingw32-make
 "#,
                 name
             ),
-            code: r#"#include "raylib.h"
+            r#"#include "raylib.h"
 int main() {
     InitWindow(800, 600, "cx + raylib");
     SetTargetFPS(60);
@@ -35,17 +137,12 @@ int main() {
 }
 "#
             .to_string(),
-        },
-        "web" => get_web_template(name, lang),
-        _ => get_console_template(name, lang),
-    }
-}
-
-fn get_web_template(name: &str, lang: &str) -> ProjectTemplate {
-    if lang == "c" {
-        ProjectTemplate {
-            toml: format!(
-                r#"[package]
+        ),
+        "web" => {
+            if lang == "c" {
+                (
+                    format!(
+                        r#"[package]
 name = "{}"
 version = "0.1.0"
 edition = "c17"
@@ -56,9 +153,9 @@ libs = ["ws2_32"]
 [dependencies]
 mongoose = {{ git = "https://github.com/cesanta/mongoose.git", build = "clang -c mongoose.c -o libmongoose.a", output = "libmongoose.a" }}
 "#,
-                name
-            ),
-            code: r#"#include "mongoose.h"
+                        name
+                    ),
+                    r#"#include "mongoose.h"
 
 static void fn(struct mg_connection* c, int ev, void* ev_data) {
   if (ev == MG_EV_HTTP_MSG) {
@@ -76,12 +173,12 @@ int main() {
   return 0;
 }
 "#
-            .to_string(),
-        }
-    } else {
-        ProjectTemplate {
-            toml: format!(
-                r#"[package]
+                    .to_string(),
+                )
+            } else {
+                (
+                    format!(
+                        r#"[package]
 name = "{}"
 version = "0.1.0"
 edition = "c++17"
@@ -93,9 +190,9 @@ libs = ["ws2_32"]
 [dependencies]
 httplib = "https://github.com/yhirose/cpp-httplib.git"
 "#,
-                name
-            ),
-            code: r#"#include <iostream>
+                        name
+                    ),
+                    r#"#include <iostream>
 #include "httplib.h"
 int main() {
     httplib::Server svr;
@@ -107,37 +204,34 @@ int main() {
     return 0;
 }
 "#
-            .to_string(),
+                    .to_string(),
+                )
+            }
         }
-    }
-}
-
-fn get_console_template(name: &str, lang: &str) -> ProjectTemplate {
-    let dep = if lang == "cpp" {
-        "\n[dependencies]\n# json = \"...\""
-    } else {
-        ""
-    };
-    let cfg = format!(
-        r#"[package]
+        _ => {
+            let dep = if lang == "cpp" {
+                "\n[dependencies]\n# json = \"...\""
+            } else {
+                ""
+            };
+            let cfg = format!(
+                r#"[package]
 name = "{}"
 version = "0.1.0"
 edition = "{}"
 {}
 "#,
-        name,
-        if lang == "c" { "c17" } else { "c++20" },
-        dep
-    );
+                name,
+                if lang == "c" { "c17" } else { "c++20" },
+                dep
+            );
 
-    let code = if lang == "c" {
-        "#include <stdio.h>\nint main() { printf(\"Hello cx!\\n\"); return 0; }"
-    } else {
-        "#include <iostream>\nint main() { std::cout << \"Hello cx!\" << std::endl; return 0; }"
-    };
-
-    ProjectTemplate {
-        toml: cfg,
-        code: code.to_string(),
+            let code = if lang == "c" {
+                "#include <stdio.h>\nint main() { printf(\"Hello cx!\\n\"); return 0; }"
+            } else {
+                "#include <iostream>\nint main() { std::cout << \"Hello cx!\" << std::endl; return 0; }"
+            };
+            (cfg, code.to_string())
+        }
     }
 }
