@@ -120,6 +120,7 @@ pub fn run_tests() -> Result<()> {
             if output.is_err() || !output.as_ref().unwrap().status.success() {
                 println!("{}", "COMPILE FAIL".red());
                 if let Ok(out) = output {
+                    println!("{}", String::from_utf8_lossy(&out.stdout));
                     println!("{}", String::from_utf8_lossy(&out.stderr));
                 }
                 continue;

@@ -8,11 +8,11 @@ version = "0.1.0"
 edition = "c++17"
 
 [build]
-libs = ["user32", "gdi32", "shell32", "SDL2", "SDL2main"]
-cflags = ["/Dmain=SDL_main"] 
+libs = ["user32", "gdi32", "shell32", "winmm", "imm32", "ole32", "oleaut32", "version", "uuid", "advapi32", "setupapi", "dinput8"]
+cflags = ["/DSDL_MAIN_HANDLED"]
 
 [dependencies]
-SDL2 = {{ git = "https://github.com/libsdl-org/SDL.git", tag = "release-2.30.0", build = "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release", output = "build/Release/SDL2.lib" }}
+SDL2 = {{ git = "https://github.com/libsdl-org/SDL.git", branch = "SDL2", build = "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSDL_TEST=OFF && cmake --build build --config Release", output = "build/Release/SDL2.lib, build/Release/SDL2main.lib" }}
 "#,
                 name
             ),
@@ -61,11 +61,11 @@ libs = ["user32", "gdi32", "shell32", "opengl32", "glfw3"]
 
 [dependencies]
 glfw = {{ git = "https://github.com/glfw/glfw.git", tag = "3.3.9", build = "cmake -S . -B build -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF && cmake --build build --config Release", output = "build/src/Release/glfw3.lib" }}
-glad = {{ git = "https://github.com/Dav1dde/glad.git", branch = "master", build = "python -m glad --generator=c --out-path=dist", output = "dist/src/glad.c" }}
+glad = {{ git = "https://github.com/Dav1dde/glad.git", tag = "v2.0.8", build = "python -m glad --api gl:core=3.3 --out-path dist c", output = "dist/src/gl.c" }}
 "#,
                 name
             ),
-            r#"#include <glad/glad.h>
+            r#"#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 

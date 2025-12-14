@@ -14,6 +14,7 @@ It provides a unified workflow for scaffolding, building, testing, formatting, a
 ## ✨ Features
 
 - **⚡ Zero Config Start**: Create a Hello World C/C++ project in seconds.
+- **🔧 Automatic Toolchain Discovery**: Detects MSVC, Clang-CL, Clang++, and GCC without relying on PATH. Uses `vswhere` on Windows.
 - **📦 Smart Dependency Management**:
   - **Git Libraries**: Auto-download from GitHub. Supports **Pinning** (Tag/Branch/Commit) for stability.
   - **System Packages**: Native support for `pkg-config` (e.g., GTK, OpenSSL).
@@ -22,7 +23,7 @@ It provides a unified workflow for scaffolding, building, testing, formatting, a
 - **🚀 Parallel & Incremental Builds**: Lock-free parallel compilation engine for maximum speed.
 - **💾 Global Caching**: Libraries are downloaded once and shared across all projects. Use `cx update` to refresh them.
 - **👁️ Watch Mode**: Automatically recompiles and runs your project when you save a file.
-- **🛠️ Flexible Configuration**: Custom binary names, environment variable support (`CC`, `CXX`), and build scripts.
+- **🛠️ Flexible Configuration**: Custom binary names, compiler selection, and build scripts.
 
 ## 📦 Installation
 
@@ -153,9 +154,18 @@ cx search raylib
 ### `cx upgrade`
 **_New!_** Self-update caxe to the latest version.
 
+### `cx toolchain`
+**_New!_** Manage compiler toolchains.
+- Run `cx toolchain` to interactively select a compiler
+- `cx toolchain clear` to reset cached selection
+
 ### `cx info`
 
-Displays diagnostic information (OS, Cache Path, Compilers).
+Displays diagnostic information including:
+- All available toolchains (MSVC, Clang-CL, Clang++, GCC)
+- Currently active compiler (marked with `← in use`)
+- Target ABI (x86_64/x86)
+- Build tools status (CMake, Make, Ninja)
 
 ---
 
@@ -171,6 +181,7 @@ edition = "c++20"
 
 [build]
 bin = "app" # Output: app.exe
+compiler = "clang"  # Options: msvc, clang, clang-cl, g++
 cflags = ["-O2", "-Wall", "-Wextra"]
 libs = ["pthread", "m"]
 

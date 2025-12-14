@@ -158,14 +158,16 @@ pub fn update_dependencies() -> Result<()> {
 
                         // Force checking out correct HEAD
                         // Note: For 'update', we typically want to pull latest.
+                        // Use fetch + reset --hard to ensure we match upstream exactly, discarding local changes (it's a cache)
+                        let command = "git fetch origin && git reset --hard origin/HEAD";
                         let status = if cfg!(target_os = "windows") {
                             Command::new("cmd")
-                                .args(&["/C", "git pull origin HEAD"])
+                                .args(&["/C", command])
                                 .current_dir(&lib_path)
                                 .output()
                         } else {
                             Command::new("sh")
-                                .args(&["-c", "git pull origin HEAD"])
+                                .args(&["-c", command])
                                 .current_dir(&lib_path)
                                 .output()
                         };
@@ -174,7 +176,8 @@ pub fn update_dependencies() -> Result<()> {
                             if out.status.success() {
                                 println!("{}", "✓".green());
                             } else {
-                                println!("{} (git pull failed)", "x".red());
+                                let err = String::from_utf8_lossy(&out.stderr);
+                                println!("{} (git update failed: {})", "x".red(), err.trim());
                             }
                         } else {
                             println!("{}", "Error executing git".red());

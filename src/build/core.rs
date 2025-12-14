@@ -113,9 +113,21 @@ pub fn build_project(config: &CxConfig, release: bool) -> Result<bool> {
         return Ok(false);
     }
 
-    let compiler = get_compiler(config, has_cpp);
+    // Get toolchain with environment variables
+    let toolchain = super::utils::get_toolchain(config, has_cpp).ok();
+    let compiler = if let Some(ref tc) = toolchain {
+        tc.cxx_path.to_string_lossy().to_string()
+    } else {
+        get_compiler(config, has_cpp)
+    };
     let is_msvc = compiler.contains("cl.exe") || compiler == "cl";
     let current_dir_str = current_dir.to_string_lossy().to_string();
+
+    // Clone env_vars for use in parallel compilation
+    let toolchain_env: std::collections::HashMap<String, String> = toolchain
+        .as_ref()
+        .map(|tc| tc.env_vars.clone())
+        .unwrap_or_default();
 
     // Prepare Common Flags (Includes)
     let mut common_flags = Vec::new();
@@ -141,8 +153,12 @@ pub fn build_project(config: &CxConfig, release: bool) -> Result<bool> {
     let results: Vec<(PathBuf, serde_json::Value)> = source_files
         .par_iter()
         .map(|src_path| -> Result<(PathBuf, serde_json::Value)> {
-            let stem = src_path.file_stem().unwrap().to_string_lossy();
-            let obj_path = obj_dir.join(format!("{}.o", stem));
+            let stem = src_path
+                .file_stem()
+                .unwrap_or(src_path.as_os_str())
+                .to_string_lossy();
+            let obj_ext = if is_msvc { "obj" } else { "o" };
+            let obj_path = obj_dir.join(format!("{}.{}", stem, obj_ext));
 
             // Construct Arguments
             let mut args = Vec::new();
@@ -191,7 +207,21 @@ pub fn build_project(config: &CxConfig, release: bool) -> Result<bool> {
 
             if let Some(build_cfg) = &config.build {
                 if let Some(flags) = &build_cfg.cflags {
-                    args.extend(flags.iter().cloned());
+                    for flag in flags {
+                        // Translate MSVC-style flags for GCC/Clang
+                        let translated = if !is_msvc && flag.starts_with("/D") {
+                            format!("-D{}", &flag[2..])
+                        } else if !is_msvc && flag.starts_with("/I") {
+                            format!("-I{}", &flag[2..])
+                        } else if is_msvc && flag.starts_with("-D") {
+                            format!("/D{}", &flag[2..])
+                        } else if is_msvc && flag.starts_with("-I") {
+                            format!("/I{}", &flag[2..])
+                        } else {
+                            flag.clone()
+                        };
+                        args.push(translated);
+                    }
                 }
             }
             args.extend(common_flags.iter().cloned());
@@ -217,26 +247,45 @@ pub fn build_project(config: &CxConfig, release: bool) -> Result<bool> {
                 pb.set_message(format!("Compiling {}", stem));
                 let mut cmd = Command::new(&args[0]);
                 cmd.args(&args[1..]);
+
+                // Apply toolchain environment variables (INCLUDE, LIB, etc.)
+                if !toolchain_env.is_empty() {
+                    cmd.envs(&toolchain_env);
+                }
+
                 let output = cmd.output().context("Failed to execute compiler")?;
 
                 if !output.status.success() {
-                    let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
-                    pb.println(format!(
-                        "{} Error compiling {}:\n{}",
-                        "x".red(),
+                    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+
+                    let error_msg = format!(
+                        "Error compiling {}:\n{}{}",
                         src_path.display(),
-                        err_msg
-                    ));
-                    return Err(anyhow::anyhow!("Compilation failed"));
+                        stdout,
+                        stderr
+                    );
+                    pb.println(format!("{} {}", "x".red(), error_msg));
+                    return Err(anyhow::anyhow!(error_msg));
                 } else {
                     // Print warnings if any (buffered)
                     let stderr = String::from_utf8_lossy(&output.stderr);
+                    let stdout = String::from_utf8_lossy(&output.stdout);
                     if !stderr.is_empty() {
                         pb.println(format!(
                             "{} Warning in {}:\n{}",
                             "!".yellow(),
                             src_path.display(),
                             stderr
+                        ));
+                    }
+                    // Some compilers print warnings to stdout too
+                    if !stdout.is_empty() {
+                        pb.println(format!(
+                            "{} Output in {}:\n{}",
+                            "!".cyan(),
+                            src_path.display(),
+                            stdout
                         ));
                     }
                 }
@@ -271,9 +320,36 @@ pub fn build_project(config: &CxConfig, release: bool) -> Result<bool> {
 
     if needs_link {
         println!("   {} Linking...", "🔗".cyan());
-        let mut cmd = Command::new(&compiler);
+
+        // Check if we have MSVC .lib files in dependencies (requires MSVC-compatible linker)
+        let has_msvc_libs = dep_libs.iter().any(|lib| lib.ends_with(".lib"));
+        let is_windows = cfg!(target_os = "windows");
+        let is_mingw_clang = !is_msvc && is_windows && compiler.contains("clang");
+
+        // Use clang-cl if we have MinGW clang but need to link MSVC libs
+        let effective_compiler = if is_mingw_clang && has_msvc_libs {
+            println!(
+                "   {} Using clang-cl for MSVC library compatibility",
+                "⚡".yellow()
+            );
+            "clang-cl".to_string()
+        } else {
+            compiler.clone()
+        };
+        let use_clang_cl = effective_compiler == "clang-cl";
+
+        let mut cmd = Command::new(&effective_compiler);
+
         cmd.args(&object_files);
-        cmd.arg("-o").arg(&output_bin);
+
+        if is_msvc || use_clang_cl {
+            // Use to_string_lossy and quote the path to handle spaces and special chars
+            let output_path = output_bin.to_string_lossy();
+            cmd.arg(format!("/Fe:{}", output_path));
+            cmd.arg(format!("/Fo:{}", obj_dir.to_string_lossy()));
+        } else {
+            cmd.arg("-o").arg(&output_bin);
+        }
 
         for lib in &dep_libs {
             cmd.arg(lib);
@@ -282,13 +358,23 @@ pub fn build_project(config: &CxConfig, release: bool) -> Result<bool> {
         if let Some(build_cfg) = &config.build {
             if let Some(libs) = &build_cfg.libs {
                 for lib in libs {
-                    cmd.arg(format!("-l{}", lib));
+                    if is_msvc || use_clang_cl {
+                        cmd.arg(format!("{}.lib", lib));
+                    } else {
+                        cmd.arg(format!("-l{}", lib));
+                    }
                 }
             }
         }
 
+        // Apply toolchain environment variables (LIB, LIBPATH, etc.)
+        if !toolchain_env.is_empty() {
+            cmd.envs(&toolchain_env);
+        }
+
         let output = cmd.output()?;
         if !output.status.success() {
+            println!("{}", String::from_utf8_lossy(&output.stdout));
             println!("{}", String::from_utf8_lossy(&output.stderr));
             println!("{} Linking failed", "x".red());
             return Ok(false);

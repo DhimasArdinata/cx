@@ -187,8 +187,11 @@ pub fn fetch_dependencies(
         }
 
         if let Some(obj) = obj_to_checkout {
-            let _ = repo.set_head_detached(obj.id());
-            let _ = repo.checkout_tree(&obj, None);
+            repo.set_head_detached(obj.id())?;
+            let mut checkout_opts = git2::build::CheckoutBuilder::new();
+            checkout_opts.force();
+            repo.checkout_tree(&obj, Some(&mut checkout_opts))
+                .context(format!("Failed to checkout {}", checkout_msg))?;
             println!("   {} Locked to {}", "📌".blue(), checkout_msg);
         }
 
@@ -237,18 +240,24 @@ pub fn fetch_dependencies(
         include_paths.push(lib_path.clone());
         include_paths.push(lib_path.join("include"));
         include_paths.push(lib_path.join("src"));
+        // CMake-built dependencies often generate headers in the build directory
+        include_paths.push(lib_path.join("build").join("include"));
+        include_paths.push(lib_path.join("build").join("include").join("SDL2"));
 
         // E. Smart Linking Logic (Zero Config Header-Only Support)
         if let Some(out_file) = output_file {
-            let full_lib_path = lib_path.join(out_file);
-            if full_lib_path.exists() {
-                link_flags.push(full_lib_path.to_string_lossy().to_string());
-            } else {
-                println!(
-                    "{} Warning: Output file not found: {}",
-                    "!".yellow(),
-                    full_lib_path.display()
-                );
+            // Support comma-separated output files
+            for single_output in out_file.split(',').map(|s| s.trim()) {
+                let full_lib_path = lib_path.join(single_output);
+                if full_lib_path.exists() {
+                    link_flags.push(full_lib_path.to_string_lossy().to_string());
+                } else {
+                    println!(
+                        "{} Warning: Output file not found: {}",
+                        "!".yellow(),
+                        full_lib_path.display()
+                    );
+                }
             }
         }
     }

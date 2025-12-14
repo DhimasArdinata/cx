@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use colored::*;
 use inquire::{Select, Text};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod build;
 mod cache;
@@ -14,6 +14,7 @@ mod doc;
 mod lock;
 mod registry;
 mod templates;
+mod toolchain;
 mod upgrade;
 
 #[derive(Parser)]
@@ -72,6 +73,11 @@ enum Commands {
         #[command(subcommand)]
         op: CacheOp,
     },
+    /// Manage toolchain selection
+    Toolchain {
+        #[command(subcommand)]
+        op: Option<ToolchainOp>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -79,6 +85,16 @@ enum CacheOp {
     Clean,
     Ls,
     Path,
+}
+
+#[derive(Subcommand)]
+enum ToolchainOp {
+    /// List all available toolchains
+    List,
+    /// Interactively select a toolchain
+    Select,
+    /// Clear cached toolchain selection
+    Clear,
 }
 
 fn main() -> Result<()> {
@@ -133,6 +149,7 @@ fn main() -> Result<()> {
             CacheOp::Ls => cache::list(),
             CacheOp::Path => cache::print_path(),
         },
+        Commands::Toolchain { op } => handle_toolchain_command(op),
     }
 }
 
@@ -150,7 +167,7 @@ fn init_project() -> Result<()> {
     let current_dir = std::env::current_dir()?;
     let dir_name = current_dir
         .file_name()
-        .unwrap_or_default()
+        .unwrap_or(std::ffi::OsStr::new("unknown"))
         .to_string_lossy();
 
     let name = Text::new("Project name?")
@@ -225,7 +242,12 @@ fn create_project(name_opt: &Option<String>, lang_cli: &str, templ_cli: &str) ->
     fs::create_dir_all(path.join("src")).context("Failed to create src")?;
 
     // 3. Get Template Content (Refactored)
-    let (toml_content, main_code) = templates::get_template(&name, lang, template);
+    // Use only the final directory name as project name (not the full path)
+    let project_name = path
+        .file_name()
+        .unwrap_or(path.as_os_str())
+        .to_string_lossy();
+    let (toml_content, main_code) = templates::get_template(&project_name, lang, template);
 
     // 4. Write Files
     let ext = if lang == "c" { "c" } else { "cpp" };
@@ -283,32 +305,239 @@ fn print_info() -> Result<()> {
         home.join(".cx").join("cache").display()
     );
 
-    println!("\n{}", "Toolchain Check:".bold());
-    let compilers = vec![
-        ("clang++", "LLVM C++"),
-        ("g++", "GNU C++"),
-        ("gcc", "GNU C"),
-        ("cl", "MSVC"),
-        ("cmake", "CMake"),
-        ("make", "Make"),
-    ];
+    println!("\n{}", "Available Toolchains:".bold());
 
-    for (bin, name) in compilers {
-        let output = std::process::Command::new(bin).arg("--version").output();
-        let (status, version) = match output {
-            Ok(out) => {
-                let v_str = String::from_utf8_lossy(&out.stdout);
-                let first_line = v_str.lines().next().unwrap_or("Detected").trim();
-                let short_ver = if first_line.len() > 40 {
-                    &first_line[..40]
+    #[cfg(windows)]
+    {
+        use toolchain::CompilerType;
+        use toolchain::windows::discover_all_toolchains;
+
+        let toolchains = discover_all_toolchains();
+        if toolchains.is_empty() {
+            println!("  {} No toolchains found!", "x".red());
+            println!("  Install Visual Studio Build Tools or LLVM to get started.");
+        } else {
+            // Check project's cx.toml for compiler preference
+            let project_compiler = if Path::new("cx.toml").exists() {
+                if let Ok(config) = build::load_config() {
+                    config.build.and_then(|b| b.compiler)
                 } else {
-                    first_line
+                    None
+                }
+            } else {
+                None
+            };
+
+            // Determine which compiler type is configured
+            let configured_type = match project_compiler.as_deref() {
+                Some("msvc") | Some("cl") | Some("cl.exe") => Some(CompilerType::MSVC),
+                Some("clang-cl") | Some("clangcl") => Some(CompilerType::ClangCL),
+                Some("clang") | Some("clang++") => Some(CompilerType::Clang),
+                Some("gcc") | Some("g++") => Some(CompilerType::GCC),
+                _ => None, // No preference = use default (first)
+            };
+
+            // Find which one is in use
+            let in_use_idx = match &configured_type {
+                Some(ct) => toolchains.iter().position(|tc| tc.compiler_type == *ct),
+                None => Some(0), // Default is first
+            };
+
+            for (i, tc) in toolchains.iter().enumerate() {
+                let is_in_use = in_use_idx == Some(i);
+                let status = "✓".green();
+                let short_ver = if tc.version.len() > 40 {
+                    format!("{}...", &tc.version[..40])
+                } else {
+                    tc.version.clone()
                 };
-                ("✓".green(), short_ver.to_string())
+                let marker = if is_in_use {
+                    " ← in use".green().bold()
+                } else {
+                    "".normal()
+                };
+                println!(
+                    "  [{}] {} {} {} - {}{}",
+                    status,
+                    format!("[{}]", i + 1).dimmed(),
+                    tc.display_name.cyan(),
+                    format!("({})", short_ver).dimmed(),
+                    tc.source.yellow(),
+                    marker
+                );
             }
-            Err(_) => ("x".red(), "Not Found".dimmed().to_string()),
-        };
-        println!("  [{}] {:<10} : ({}) {}", status, bin, name, version);
+
+            // Show current ABI and config source
+            println!();
+            println!("{}", "Current Configuration:".bold());
+
+            let active_tc = in_use_idx.and_then(|i| toolchains.get(i));
+            if let Some(tc) = active_tc {
+                println!(
+                    "  {}: {} ({})",
+                    "Compiler".bold(),
+                    tc.display_name.cyan(),
+                    tc.source
+                );
+                let abi = if tc.path.to_string_lossy().contains("x64")
+                    || tc.path.to_string_lossy().contains("Hostx64")
+                {
+                    "x86_64 (64-bit)"
+                } else if tc.path.to_string_lossy().contains("x86")
+                    || tc.path.to_string_lossy().contains("Hostx86")
+                {
+                    "x86 (32-bit)"
+                } else {
+                    "x86_64 (64-bit)"
+                };
+                println!("  {}: {}", "Target ABI".bold(), abi.cyan());
+            }
+            println!(
+                "  {}: Set {} in cx.toml to override",
+                "Override".bold(),
+                "compiler = \"...\"".yellow()
+            );
+        }
+
+        // Build tools check (cmake, make, etc.)
+        println!("\n{}", "Build Tools:".bold());
+        let tools = vec![("cmake", "CMake"), ("make", "Make"), ("ninja", "Ninja")];
+        for (bin, name) in tools {
+            let output = std::process::Command::new(bin).arg("--version").output();
+            let (status, version) = match output {
+                Ok(out) if out.status.success() => {
+                    let stdout = String::from_utf8_lossy(&out.stdout);
+                    let first_line = stdout.lines().next().unwrap_or("Detected").trim();
+                    let short = if first_line.len() > 40 {
+                        &first_line[..40]
+                    } else {
+                        first_line
+                    };
+                    ("✓".green(), short.to_string())
+                }
+                _ => ("x".red(), "Not Found".dimmed().to_string()),
+            };
+            println!("  [{}] {:<10} : {}", status, name, version);
+        }
+    }
+
+    #[cfg(not(windows))]
+    {
+        // Unix fallback - check PATH
+        let compilers = vec![("clang++", "LLVM C++"), ("g++", "GNU C++")];
+
+        for (bin, name) in compilers {
+            let output = std::process::Command::new(bin).arg("--version").output();
+            let (status, version) = match output {
+                Ok(out) if out.status.success() => {
+                    let stdout = String::from_utf8_lossy(&out.stdout);
+                    let first_line = stdout.lines().next().unwrap_or("Detected").trim();
+                    ("✓".green(), first_line.to_string())
+                }
+                _ => ("x".red(), "Not Found".dimmed().to_string()),
+            };
+            println!("  [{}] {:<10} : ({}) {}", status, bin, name, version);
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_toolchain_command(op: &Option<ToolchainOp>) -> Result<()> {
+    #[cfg(windows)]
+    {
+        use toolchain::windows::discover_all_toolchains;
+
+        match op {
+            Some(ToolchainOp::List) => {
+                // Just redirect to cx info
+                println!(
+                    "{}",
+                    "Use 'cx info' to see all available toolchains".yellow()
+                );
+                println!("Or run 'cx toolchain' to select one interactively.");
+            }
+
+            None | Some(ToolchainOp::Select) => {
+                // Interactive selection (default behavior)
+                let toolchains = discover_all_toolchains();
+                if toolchains.is_empty() {
+                    println!("{} No toolchains found!", "x".red());
+                    println!("  Install Visual Studio Build Tools or LLVM to get started.");
+                    return Ok(());
+                }
+
+                // Format options for display
+                let options: Vec<String> = toolchains.iter().map(|tc| tc.to_string()).collect();
+
+                let selection = Select::new("Select a toolchain:", options).prompt()?;
+
+                // Find the selected toolchain
+                let selected = toolchains.iter().find(|tc| tc.to_string() == selection);
+
+                if let Some(tc) = selected {
+                    // Cache the selection
+                    let cache_path = dirs::home_dir()
+                        .unwrap_or_else(|| PathBuf::from("."))
+                        .join(".cx")
+                        .join("toolchain-selection.toml");
+
+                    let content = format!(
+                        "# User-selected toolchain\ncompiler_type = {:?}\npath = {:?}\nversion = {:?}\nsource = {:?}\n",
+                        format!("{:?}", tc.compiler_type),
+                        tc.path.display(),
+                        tc.version,
+                        tc.source
+                    );
+
+                    if let Err(e) = std::fs::create_dir_all(cache_path.parent().unwrap()) {
+                        println!("{} Failed to create cache dir: {}", "x".red(), e);
+                    } else if let Err(e) = std::fs::write(&cache_path, content) {
+                        println!("{} Failed to save selection: {}", "x".red(), e);
+                    } else {
+                        println!();
+                        println!(
+                            "{} Selected: {} ({})",
+                            "✓".green(),
+                            tc.display_name.cyan(),
+                            tc.source.yellow()
+                        );
+                        println!("  Saved to: {}", cache_path.display().to_string().dimmed());
+                    }
+                }
+            }
+
+            Some(ToolchainOp::Clear) => {
+                // Clear cached selection
+                let cache_path = dirs::home_dir()
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join(".cx")
+                    .join("toolchain-selection.toml");
+
+                if cache_path.exists() {
+                    if let Err(e) = std::fs::remove_file(&cache_path) {
+                        println!("{} Failed to clear selection: {}", "x".red(), e);
+                    } else {
+                        println!("{} Cleared toolchain selection", "✓".green());
+                    }
+                } else {
+                    println!("{} No toolchain selection cached", "ℹ".blue());
+                }
+
+                // Also clear the toolchain cache
+                toolchain::clear_toolchain_cache();
+                println!("{} Cleared toolchain cache", "✓".green());
+            }
+        }
+    }
+
+    #[cfg(not(windows))]
+    {
+        println!(
+            "{} Toolchain selection is currently Windows-only",
+            "ℹ".blue()
+        );
+        println!("  On Unix, the default clang++ or g++ from PATH is used.");
     }
 
     Ok(())
