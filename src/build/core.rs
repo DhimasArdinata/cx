@@ -69,37 +69,70 @@ pub fn build_project(
             .map(|s| s.as_str())
             .unwrap_or("auto");
 
-        println!();
-        if dry_run {
-            println!("╭────────────────────────────────────────╮");
-            println!("│  {} {:<30} │", "🔍".yellow(), "DRY RUN".bold().yellow());
-        } else {
-            println!("╭────────────────────────────────────────╮");
-            println!("│  {} {:<30} │", "🔧".cyan(), "BUILD".bold().cyan());
-        }
-        println!("├────────────────────────────────────────┤");
-        println!(
-            "│  {:<10} {} v{:<19} │",
-            "Package".dimmed(),
-            config.package.name.cyan(),
-            config.package.version
-        );
-        println!(
-            "│  {:<10} {:<27} │",
-            "Profile".dimmed(),
-            if release {
-                profile_str.green().to_string()
+        // Helper to pad strings to fixed width
+        let pad = |s: &str, width: usize| -> String {
+            if s.len() >= width {
+                s[..width].to_string()
             } else {
-                profile_str.yellow().to_string()
+                format!("{}{}", s, " ".repeat(width - s.len()))
             }
-        );
-        println!("│  {:<10} {:<27} │", "Edition".dimmed(), edition_str);
+        };
+
+        println!();
+        let box_width = 42;
+        let inner_width = box_width - 4; // "│  " and " │"
+
+        // Header
+        println!("╭{}╮", "─".repeat(box_width - 2));
+        if dry_run {
+            println!(
+                "│  {} {}│",
+                "🔍",
+                pad(&"DRY RUN".bold().yellow().to_string(), inner_width - 4).yellow()
+            );
+        } else {
+            println!(
+                "│  {} {}│",
+                "🔧",
+                pad(&"BUILD".bold().cyan().to_string(), inner_width - 4).cyan()
+            );
+        }
+        println!("├{}┤", "─".repeat(box_width - 2));
+
+        // Format package line: "name v0.1.0" then pad
+        let pkg_value = format!("{} v{}", config.package.name, config.package.version);
+        let pkg_padded = pad(&pkg_value, 26);
+        println!("│  {} {} │", pad("Package", 9).dimmed(), pkg_padded.cyan());
+
+        // Profile line
+        let profile_padded = pad(profile_str, 26);
+        if release {
+            println!(
+                "│  {} {} │",
+                pad("Profile", 9).dimmed(),
+                profile_padded.green()
+            );
+        } else {
+            println!(
+                "│  {} {} │",
+                pad("Profile", 9).dimmed(),
+                profile_padded.yellow()
+            );
+        }
+
+        // Edition line
+        let edition_padded = pad(edition_str, 26);
+        println!("│  {} {} │", pad("Edition", 9).dimmed(), edition_padded);
+
+        // Compiler line
+        let compiler_padded = pad(compiler_str, 26);
         println!(
-            "│  {:<10} {:<27} │",
-            "Compiler".dimmed(),
-            compiler_str.cyan()
+            "│  {} {} │",
+            pad("Compiler", 9).dimmed(),
+            compiler_padded.cyan()
         );
-        println!("╰────────────────────────────────────────╯");
+
+        println!("╰{}╯", "─".repeat(box_width - 2));
         println!();
     }
 
@@ -297,12 +330,19 @@ pub fn build_project(
             bin_name.cyan()
         );
 
-        // Modern footer
+        // Modern footer with proper alignment
+        let pad = |s: &str, width: usize| -> String {
+            if s.len() >= width {
+                s[..width].to_string()
+            } else {
+                format!("{}{}", s, " ".repeat(width - s.len()))
+            }
+        };
         println!();
-        println!("╭────────────────────────────────────────╮");
-        println!("│  {} {:<30} │", "✓".green(), "Dry run complete");
-        println!("│  {:<38} │", "No commands were executed".dimmed());
-        println!("╰────────────────────────────────────────╯");
+        println!("╭{}╮", "─".repeat(40));
+        println!("│  {} {} │", "✓".green(), pad("Dry run complete", 34));
+        println!("│  {} │", pad("No commands were executed", 37).dimmed());
+        println!("╰{}╯", "─".repeat(40));
         return Ok(true);
     }
 
