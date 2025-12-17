@@ -66,6 +66,8 @@ fn parse_vswhere_output(json_str: &str) -> Result<Vec<VSInstallation>, Toolchain
     })?;
 
     let mut result = Vec::new();
+    let mut seen_paths = std::collections::HashSet::new();
+
     for inst in installations {
         if let (Some(path), Some(name), Some(version), Some(product)) = (
             inst.get("installationPath").and_then(|v| v.as_str()),
@@ -73,8 +75,14 @@ fn parse_vswhere_output(json_str: &str) -> Result<Vec<VSInstallation>, Toolchain
             inst.get("installationVersion").and_then(|v| v.as_str()),
             inst.get("productId").and_then(|v| v.as_str()),
         ) {
+            let path_buf = PathBuf::from(path);
+            if seen_paths.contains(&path_buf) {
+                continue;
+            }
+            seen_paths.insert(path_buf.clone());
+
             result.push(VSInstallation {
-                install_path: PathBuf::from(path),
+                install_path: path_buf,
                 display_name: name.to_string(),
                 version: version.to_string(),
                 product_id: product.to_string(),
@@ -322,7 +330,47 @@ fn get_compiler_version(compiler_path: &PathBuf, is_msvc: bool) -> String {
                 String::from_utf8_lossy(&out.stdout),
                 String::from_utf8_lossy(&out.stderr)
             );
-            combined.lines().next().unwrap_or("unknown").to_string()
+
+            for line in combined.lines() {
+                let text = line.trim();
+                if text.is_empty() {
+                    continue;
+                }
+
+                if is_msvc {
+                    // Ignore copyright/usage/banner noise
+                    if text.starts_with("Copyright") || text.starts_with("usage:") {
+                        continue;
+                    }
+                    // "Microsoft (R) C/C++ Optimizing Compiler Version 19.xx..."
+                    if text.contains("Microsoft (R)") && text.contains("Version") {
+                        return text.to_string();
+                    }
+                    // Fallback: if we haven't found exact match but it looks like a version line
+                    if text.contains("Version") {
+                        return text.to_string();
+                    }
+                } else {
+                    // GCC/Clang usually puts version on first line
+                    return text.to_string();
+                }
+            }
+
+            // If strictly MSVC and failed to find "Version", try first non-usage line or just return "unknown"
+            if is_msvc {
+                // Try to pick the first line that isn't usage or copyright as a fallback
+                for line in combined.lines() {
+                    let text = line.trim();
+                    if !text.is_empty()
+                        && !text.starts_with("usage:")
+                        && !text.starts_with("Copyright")
+                    {
+                        return text.to_string();
+                    }
+                }
+            }
+
+            "unknown".to_string()
         }
         Err(_) => "unknown".to_string(),
     }

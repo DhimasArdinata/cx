@@ -1,6 +1,7 @@
 use super::utils::{get_compiler, load_config, run_script};
 use crate::config::CxConfig;
 use crate::deps;
+use crate::ui;
 use anyhow::{Context, Result};
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -13,10 +14,17 @@ use std::time::Instant;
 use walkdir::WalkDir;
 
 // --- Helper: Check Dependencies (.d file) ---
-fn check_dependencies(obj_path: &Path) -> Result<bool> {
+fn check_dependencies(obj_path: &Path, src_path: &Path) -> Result<bool> {
     let d_path = obj_path.with_extension("d");
+
+    // Fallback: If no .d file (e.g. MSVC or first run), check if source is newer than object
     if !d_path.exists() {
-        return Ok(true); // No dependency file, force recompile
+        if !obj_path.exists() {
+            return Ok(true);
+        }
+        let src_mtime = fs::metadata(src_path)?.modified()?;
+        let obj_mtime = fs::metadata(obj_path)?.modified()?;
+        return Ok(src_mtime > obj_mtime);
     }
 
     let dep_content = fs::read_to_string(&d_path)?;
@@ -69,70 +77,43 @@ pub fn build_project(
             .map(|s| s.as_str())
             .unwrap_or("auto");
 
-        // Helper to pad strings to fixed width
-        let pad = |s: &str, width: usize| -> String {
-            if s.len() >= width {
-                s[..width].to_string()
-            } else {
-                format!("{}{}", s, " ".repeat(width - s.len()))
-            }
-        };
-
         println!();
-        let box_width = 42;
-        let inner_width = box_width - 4; // "│  " and " │"
-
-        // Header
-        println!("╭{}╮", "─".repeat(box_width - 2));
-        if dry_run {
-            println!(
-                "│  {} {}│",
-                "🔍",
-                pad(&"DRY RUN".bold().yellow().to_string(), inner_width - 4).yellow()
-            );
+        let mode = if dry_run {
+            "DRY RUN".yellow().bold()
         } else {
-            println!(
-                "│  {} {}│",
-                "🔧",
-                pad(&"BUILD".bold().cyan().to_string(), inner_width - 4).cyan()
-            );
-        }
-        println!("├{}┤", "─".repeat(box_width - 2));
+            "BUILD".cyan().bold()
+        };
+        let icon = if dry_run { "🔍" } else { "🔧" };
+        println!("  {} {}", icon, mode);
 
-        // Format package line: "name v0.1.0" then pad
+        let mut table = ui::Table::new(&["Setting", "Value"]);
+
         let pkg_value = format!("{} v{}", config.package.name, config.package.version);
-        let pkg_padded = pad(&pkg_value, 26);
-        println!("│  {} {} │", pad("Package", 9).dimmed(), pkg_padded.cyan());
+        table.add_row(vec![
+            "Package".dimmed().to_string(),
+            pkg_value.cyan().to_string(),
+        ]);
 
-        // Profile line
-        let profile_padded = pad(profile_str, 26);
-        if release {
-            println!(
-                "│  {} {} │",
-                pad("Profile", 9).dimmed(),
-                profile_padded.green()
-            );
+        let profile_colored = if release {
+            profile_str.green()
         } else {
-            println!(
-                "│  {} {} │",
-                pad("Profile", 9).dimmed(),
-                profile_padded.yellow()
-            );
-        }
+            profile_str.yellow()
+        };
+        table.add_row(vec![
+            "Profile".dimmed().to_string(),
+            profile_colored.to_string(),
+        ]);
 
-        // Edition line
-        let edition_padded = pad(edition_str, 26);
-        println!("│  {} {} │", pad("Edition", 9).dimmed(), edition_padded);
+        table.add_row(vec![
+            "Edition".dimmed().to_string(),
+            edition_str.to_string(),
+        ]);
+        table.add_row(vec![
+            "Compiler".dimmed().to_string(),
+            compiler_str.cyan().to_string(),
+        ]);
 
-        // Compiler line
-        let compiler_padded = pad(compiler_str, 26);
-        println!(
-            "│  {} {} │",
-            pad("Compiler", 9).dimmed(),
-            compiler_padded.cyan()
-        );
-
-        println!("╰{}╯", "─".repeat(box_width - 2));
+        table.print();
         println!();
     }
 
@@ -330,20 +311,113 @@ pub fn build_project(
             bin_name.cyan()
         );
 
-        // Modern footer with proper alignment
-        let pad = |s: &str, width: usize| -> String {
-            if s.len() >= width {
-                s[..width].to_string()
-            } else {
-                format!("{}{}", s, " ".repeat(width - s.len()))
-            }
-        };
         println!();
-        println!("╭{}╮", "─".repeat(40));
-        println!("│  {} {} │", "✓".green(), pad("Dry run complete", 34));
-        println!("│  {} │", pad("No commands were executed", 37).dimmed());
-        println!("╰{}╯", "─".repeat(40));
+        println!("  {} {}", "✓".green(), "Dry run complete".bold());
+        println!("  {}", "No commands were executed.".dimmed());
         return Ok(true);
+    }
+
+    // 5b. Precompiled Headers (PCH)
+    let mut pch_args = Vec::new();
+    if let Some(build_cfg) = &config.build {
+        if let Some(pch_str) = &build_cfg.pch {
+            let pch_source = Path::new(pch_str);
+            if !pch_source.exists() {
+                println!("{} PCH file not found: {}", "!".yellow(), pch_str);
+            } else {
+                let pch_name = pch_source.file_name().unwrap().to_string_lossy();
+
+                if is_msvc {
+                    let pch_out = obj_dir.join(format!("{}.pch", pch_name));
+                    // Check mtime
+                    let need_pch = !pch_out.exists()
+                        || pch_source
+                            .metadata()
+                            .and_then(|m| m.modified())
+                            .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+                            > pch_out
+                                .metadata()
+                                .and_then(|m| m.modified())
+                                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+                    if need_pch {
+                        println!("{} Compiling PCH (MSVC)...", "⚙".cyan());
+                        let mut cmd = Command::new(&compiler);
+                        cmd.args(&["/nologo", "/c", "/EHsc"]);
+                        cmd.arg("/Yc"); // Create PCH
+                        cmd.arg(format!("/Fp{}", pch_out.display()));
+                        cmd.arg(pch_source);
+                        // Add includes/defines
+                        cmd.args(&common_flags);
+                        cmd.arg(format!(
+                            "/Fo{}",
+                            obj_dir.join(format!("{}.obj", pch_name)).display()
+                        ));
+
+                        // Envs
+                        if !toolchain_env.is_empty() {
+                            cmd.envs(&toolchain_env);
+                        }
+
+                        let out = cmd.output()?;
+                        if !out.status.success() {
+                            return Err(anyhow::anyhow!(
+                                "Failed to compile PCH: {}",
+                                String::from_utf8_lossy(&out.stderr)
+                            ));
+                        }
+                    }
+                    // Use PCH flags for other files
+                    pch_args.push(format!("/Yu{}", pch_name));
+                    pch_args.push(format!("/Fp{}", pch_out.display()));
+
+                    // MSVC requires the object file of the PCH to be linked too!
+                    // We need to add it to 'source_files' or 'dep_libs'?
+                    // Actually, we usually just link the .obj generated from PCH.
+                    // I'll leave it for now, user might include it manually or we handle it.
+                    // IMPORTANT: MSVC PCH creation generates an .obj file that MUST be linked.
+                    dep_libs.push(
+                        obj_dir
+                            .join(format!("{}.obj", pch_name))
+                            .to_string_lossy()
+                            .to_string(),
+                    );
+                } else {
+                    // GCC / Clang
+                    // Output: build/header.hpp.gch
+                    let pch_out = obj_dir.join(format!("{}.gch", pch_name));
+                    let need_pch = !pch_out.exists()
+                        || pch_source.metadata().unwrap().modified().unwrap()
+                            > pch_out
+                                .metadata()
+                                .map(|m| m.modified().unwrap())
+                                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+                    if need_pch {
+                        println!("{} Compiling PCH (GCC/Clang)...", "⚙".cyan());
+                        let mut cmd = Command::new(&compiler);
+                        cmd.args(&["-c"]);
+                        cmd.arg(pch_source);
+                        cmd.arg("-o");
+                        cmd.arg(&pch_out);
+                        cmd.args(&common_flags);
+                        cmd.arg(format!("-std={}", config.package.edition));
+
+                        let out = cmd.output()?;
+                        if !out.status.success() {
+                            return Err(anyhow::anyhow!(
+                                "Failed to compile PCH: {}",
+                                String::from_utf8_lossy(&out.stderr)
+                            ));
+                        }
+                    }
+                    // Use PCH
+                    // For GCC to find "header.hpp.gch" when user asks for "header.hpp",
+                    // we need "-I build/".
+                    pch_args.push(format!("-I{}", obj_dir.display()));
+                }
+            }
+        }
     }
 
     // 6. Parallel Compilation (Lock-Free Optimization)
@@ -431,6 +505,7 @@ pub fn build_project(
                 }
             }
             args.extend(common_flags.iter().cloned());
+            args.extend(pch_args.iter().cloned());
 
             // Prepare JSON entry for Intellisense
             let entry = json!({
@@ -443,7 +518,7 @@ pub fn build_project(
             let needs_compile = if !obj_path.exists() {
                 true
             } else {
-                match check_dependencies(&obj_path) {
+                match check_dependencies(&obj_path, src_path) {
                     Ok(needs) => needs,
                     Err(_) => true, // On error (e.g. read failure), safe to recompile
                 }
@@ -472,7 +547,7 @@ pub fn build_project(
                         stderr
                     );
                     pb.println(format!("{} {}", "x".red(), error_msg));
-                    return Err(anyhow::anyhow!(error_msg));
+                    return Err(anyhow::anyhow!("Compilation failed"));
                 } else {
                     // Print warnings if any (buffered)
                     let stderr = String::from_utf8_lossy(&output.stderr);

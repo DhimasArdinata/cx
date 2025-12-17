@@ -27,7 +27,10 @@ pub fn check_and_upgrade() -> Result<()> {
     println!("{} Checking for updates...", "🔍".blue());
 
     let current_ver = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let url = format!("https://api.github.com/repos/{}/{}/releases/latest", REPO_OWNER, REPO_NAME);
+    let url = format!(
+        "https://api.github.com/repos/{}/{}/releases/latest",
+        REPO_OWNER, REPO_NAME
+    );
 
     let resp = ureq::get(&url)
         .set("User-Agent", "caxe-updater")
@@ -36,7 +39,7 @@ pub fn check_and_upgrade() -> Result<()> {
         .context("Failed to check for updates")?;
 
     let release: Release = resp.into_json()?;
-    
+
     // Clean tag name (remove 'v' prefix if present)
     let tag_clean = release.tag_name.trim_start_matches('v');
     let remote_ver = Version::parse(tag_clean).context("Failed to parse remote version")?;
@@ -46,38 +49,72 @@ pub fn check_and_upgrade() -> Result<()> {
         return Ok(());
     }
 
-    println!("{} New version available: v{} -> v{}", "🚀".green(), current_ver, remote_ver);
+    println!(
+        "{} New version available: v{} -> v{}",
+        "🚀".green(),
+        current_ver,
+        remote_ver
+    );
     println!("Downloading...");
 
     // Find Asset
     let target = get_target_name();
-    let asset = release.assets.iter()
+    let asset = release
+        .assets
+        .iter()
         .find(|a| a.name.contains(target))
         .or_else(|| {
-             // Fallback heuristics
-             if cfg!(windows) && release.assets.iter().any(|a| a.name.ends_with(".exe")) {
-                 release.assets.iter().find(|a| a.name.ends_with(".exe"))
-             } else {
-                 None
-             }
+            // Fallback heuristics
+            if cfg!(windows) && release.assets.iter().any(|a| a.name.ends_with(".exe")) {
+                release.assets.iter().find(|a| a.name.ends_with(".exe"))
+            } else {
+                None
+            }
         })
         .context("No compatible binary found for this OS")?;
 
     // Download
-    let mut reader = ureq::get(&asset.browser_download_url)
+    let agent = ureq::get(&asset.browser_download_url)
+        .set("User-Agent", "caxe-updater")
         .call()
-        .context("Failed to download update")?
-        .into_reader();
+        .context("Failed to download update")?;
 
+    let total_size = agent
+        .header("content-length")
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(0);
+
+    let pb = indicatif::ProgressBar::new(total_size);
+    pb.set_style(
+        indicatif::ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+    pb.set_message("Downloading...");
+
+    let mut reader = agent.into_reader();
     let current_exe = env::current_exe()?;
     let tmp_exe = current_exe.with_extension("tmp");
-
     let mut tmp_file = fs::File::create(&tmp_exe)?;
-    io::copy(&mut reader, &mut tmp_file)?;
+
+    // Copy with progress
+    let mut buffer = [0; 8192];
+    use std::io::Read;
+    use std::io::Write;
+    loop {
+        let n = reader.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        tmp_file.write_all(&buffer[..n])?;
+        pb.inc(n as u64);
+    }
+    pb.finish_with_message("Download complete");
 
     // Replace
     println!("Installing...");
-    
+
     if cfg!(target_os = "windows") {
         let old_exe = current_exe.with_extension("line_old");
         // Rename current to .old (allowed on Windows)
@@ -87,7 +124,7 @@ pub fn check_and_upgrade() -> Result<()> {
         let _ = fs::rename(&current_exe, &old_exe);
         fs::rename(&tmp_exe, &current_exe)?;
     } else {
-        // Unix: can override running file usually, or rename. 
+        // Unix: can override running file usually, or rename.
         // Rename is safer.
         fs::rename(&tmp_exe, &current_exe)?;
         // Make executable (chmod +x)

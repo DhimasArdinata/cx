@@ -20,9 +20,10 @@ It provides a unified workflow for scaffolding, building, testing, formatting, a
   - **System Packages**: Native support for `pkg-config` (e.g., GTK, OpenSSL).
   - **Header-Only Support**: Automatically detects libraries that don't need linking (e.g., nlohmann/json).
 - **🎨 Code Formatting**: Built-in `cx fmt` command (via `clang-format`).
-- **🚀 Parallel & Incremental Builds**: Lock-free parallel compilation engine for maximum speed.
+- **🚀 High-Performance Builds**: Lock-free **Parallel Compilation** (source & tests) + **Precompiled Headers (PCH)** support.
 - **💾 Global Caching**: Libraries are downloaded once and shared across all projects. Use `cx update` to refresh them.
-- **👁️ Watch Mode**: Automatically recompiles and runs your project when you save a file.
+- **👁️ Watch & TDD Mode**: Automatically recompiles (and optionally runs tests) when you save a file.
+- **🐚 Shell Completion**: Generate autocomplete scripts for PowerShell, Bash, Zsh, Fish.
 - **🛠️ Flexible Configuration**: Custom binary names, compiler selection, and build scripts.
 
 ## 📦 Installation
@@ -129,10 +130,22 @@ Formats all source code in `src/`. Requires `clang-format`.
 ### `cx clean`
 
 Removes the `build/` directory and metadata files.
+- `--cache` : Wipe the global library cache (`~/.cx/cache`).
+- `--all` : Remove all artifacts (build, docs, compile_commands, etc.).
 
 ### `cx watch`
 
 Watches for file changes and auto-runs.
+- `--test` : **TDD Mode**. Runs tests instead of the main app.
+
+### `cx completion <shell>`
+**_New!_** Generate shell completion scripts.
+```bash
+# PowerShell
+cx completion powershell | Out-File $PROFILE
+# Bash
+cx completion bash > ~/.cx-completion.bash
+```
 
 ### `cx test`
 
@@ -197,6 +210,7 @@ bin = "app" # Output: app.exe
 compiler = "clang"  # Options: msvc, clang, clang-cl, g++
 cflags = ["-O2", "-Wall", "-Wextra"]
 libs = ["pthread", "m"]
+pch = "src/pch.hpp" # Precompiled Header (Optional)
 
 [dependencies]
 # 1. Simple Git (HEAD)

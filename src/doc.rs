@@ -38,15 +38,28 @@ EXTRACT_ALL            = YES
     }
 
     // 3. Run Doxygen
-    let status = Command::new("doxygen").status()?;
+    let pb = indicatif::ProgressBar::new_spinner();
+    pb.set_style(
+        indicatif::ProgressStyle::default_spinner()
+            .template("{spinner:.green} {msg}")
+            .unwrap()
+            .tick_chars("-\\|/"),
+    );
+    pb.enable_steady_tick(std::time::Duration::from_millis(100));
+    pb.set_message("Running Doxygen...");
 
-    if status.success() {
+    let output = Command::new("doxygen").output()?;
+
+    if output.status.success() {
+        pb.finish_and_clear();
         println!(
             "{} Documentation generated in docs/html/index.html",
             "✓".green()
         );
     } else {
-        println!("{} Doxygen failed.", "x".red());
+        pb.finish_and_clear();
+        println!("{} Doxygen failed:", "x".red());
+        println!("{}", String::from_utf8_lossy(&output.stderr));
     }
 
     Ok(())

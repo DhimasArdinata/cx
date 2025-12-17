@@ -3,6 +3,8 @@ use crate::config::CxConfig;
 use crate::deps;
 use anyhow::Result;
 use colored::*;
+use indicatif::{ProgressBar, ProgressStyle};
+use rayon::prelude::*;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -47,24 +49,37 @@ pub fn run_tests() -> Result<()> {
     println!("{} Running tests...", "🧪".magenta());
     fs::create_dir_all("build/tests")?;
 
-    let mut total_tests = 0;
-    let mut passed_tests = 0;
-
+    let mut test_files = Vec::new();
     for entry in WalkDir::new(test_dir).into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path();
+        let path = entry.path().to_path_buf();
         let is_cpp = path.extension().map_or(false, |ext| {
             ["cpp", "cc", "cxx"].contains(&ext.to_str().unwrap())
         });
         let is_c = path.extension().map_or(false, |ext| ext == "c");
 
         if is_cpp || is_c {
-            total_tests += 1;
-            let test_name = path.file_stem().unwrap().to_string_lossy();
+            test_files.push((path, is_cpp));
+        }
+    }
+
+    let pb = ProgressBar::new((test_files.len() * 2) as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+
+    // Phase 1: Parallel Compilation
+    let compiled_results: Vec<(String, Option<String>)> = test_files
+        .par_iter()
+        .map(|(path, is_cpp)| {
+            let test_name = path.file_stem().unwrap().to_string_lossy().to_string();
             let output_bin = format!("build/tests/{}", test_name);
 
-            print!("   TEST {} ... ", test_name.bold());
+            pb.set_message(format!("Compiling {}", test_name));
 
-            let compiler = get_compiler(&config, is_cpp);
+            let compiler = get_compiler(&config, *is_cpp);
             let is_msvc = compiler.contains("cl.exe") || compiler == "cl";
             let mut cmd = Command::new(&compiler);
 
@@ -117,35 +132,94 @@ pub fn run_tests() -> Result<()> {
             }
 
             let output = cmd.output();
-            if output.is_err() || !output.as_ref().unwrap().status.success() {
-                println!("{}", "COMPILE FAIL".red());
-                if let Ok(out) = output {
-                    println!("{}", String::from_utf8_lossy(&out.stdout));
-                    println!("{}", String::from_utf8_lossy(&out.stderr));
+            let success = match output {
+                Ok(out) => {
+                    if !out.status.success() {
+                        pb.suspend(|| {
+                            println!("{} COMPILE FAIL: {}", "x".red(), test_name.bold());
+                            println!("{}", String::from_utf8_lossy(&out.stdout));
+                            println!("{}", String::from_utf8_lossy(&out.stderr));
+                        });
+                        false
+                    } else {
+                        true
+                    }
                 }
-                continue;
+                Err(e) => {
+                    pb.suspend(|| {
+                        println!("{} COMPILER ERROR: {} ({})", "x".red(), test_name.bold(), e);
+                    });
+                    false
+                }
+            };
+
+            pb.inc(1);
+            if success {
+                (test_name, Some(output_bin))
+            } else {
+                (test_name, None)
             }
+        })
+        .collect();
+
+    // Phase 2: Sequential Execution
+    let mut passed_tests = 0;
+    let mut total_tests = 0;
+
+    for (test_name, bin_path) in compiled_results {
+        total_tests += 1;
+
+        if let Some(output_bin) = bin_path {
+            pb.set_message(format!("Running {}", test_name));
 
             let run_path = if cfg!(target_os = "windows") {
                 format!("{}.exe", output_bin)
             } else {
                 format!("./{}", output_bin)
             };
+
             let run_status = Command::new(&run_path).status();
 
             match run_status {
                 Ok(status) => {
                     if status.success() {
-                        println!("{}", "PASS".green());
+                        pb.suspend(|| {
+                            println!(
+                                "   {} TEST {} ... {}",
+                                "✓".green(),
+                                test_name.bold(),
+                                "PASS".green()
+                            )
+                        });
                         passed_tests += 1;
                     } else {
-                        println!("{}", "FAIL".red());
+                        pb.suspend(|| {
+                            println!(
+                                "   {} TEST {} ... {}",
+                                "x".red(),
+                                test_name.bold(),
+                                "FAIL".red()
+                            )
+                        });
                     }
                 }
-                Err(_) => println!("{}", "EXEC FAIL".red()),
+                Err(_) => {
+                    pb.suspend(|| {
+                        println!(
+                            "   {} TEST {} ... {}",
+                            "x".red(),
+                            test_name.bold(),
+                            "EXEC FAIL".red()
+                        )
+                    });
+                }
             }
         }
+
+        pb.inc(1);
     }
+
+    pb.finish_and_clear();
 
     println!("\nTest Result: {}/{} passed.", passed_tests, total_tests);
     if total_tests > 0 && passed_tests == total_tests {

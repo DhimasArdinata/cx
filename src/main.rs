@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::{Shell, generate};
 use colored::*;
 use inquire::{Select, Text};
 use std::fs;
@@ -15,6 +16,7 @@ mod lock;
 mod registry;
 mod templates;
 mod toolchain;
+mod ui;
 mod upgrade;
 
 #[derive(Parser)]
@@ -68,8 +70,19 @@ enum Commands {
     Remove {
         lib: String,
     },
-    Watch,
-    Clean,
+    Watch {
+        /// Watch tests instead of just building
+        #[arg(long)]
+        test: bool,
+    },
+    Clean {
+        /// Clean global cache
+        #[arg(long)]
+        cache: bool,
+        /// Clean everything (docs, artifacts)
+        #[arg(long)]
+        all: bool,
+    },
     Test,
     Info,
     Fmt,
@@ -84,6 +97,10 @@ enum Commands {
     Cache {
         #[command(subcommand)]
         op: CacheOp,
+    },
+    /// Generate shell completion scripts
+    Completion {
+        shell: Shell,
     },
     /// Manage toolchain selection
     Toolchain {
@@ -126,10 +143,11 @@ fn main() -> Result<()> {
             if results.is_empty() {
                 println!("{} No results found for '{}'", "x".red(), query);
             } else {
-                println!("{} Found {} results:", "🔍".blue(), results.len());
+                let mut table = ui::Table::new(&["Name", "Type/Url"]);
                 for (name, url) in results {
-                    println!("  {} - {}", name.bold().green(), url);
+                    table.add_row(vec![name.bold().green().to_string(), url]);
                 }
+                table.print();
             }
             Ok(())
         }
@@ -150,8 +168,8 @@ fn main() -> Result<()> {
             args,
         } => build::build_and_run(*release, *verbose, *dry_run, args),
 
-        Commands::Watch => build::watch(),
-        Commands::Clean => build::clean(),
+        Commands::Watch { test } => build::watch(*test),
+        Commands::Clean { cache, all } => build::clean(*cache, *all),
         Commands::Test => build::run_tests(),
         Commands::Add {
             lib,
@@ -172,6 +190,12 @@ fn main() -> Result<()> {
             CacheOp::Ls => cache::list(),
             CacheOp::Path => cache::print_path(),
         },
+        Commands::Completion { shell } => {
+            let mut cmd = Cli::command();
+            let bin_name = cmd.get_name().to_string();
+            generate(*shell, &mut cmd, bin_name, &mut std::io::stdout());
+            Ok(())
+        }
         Commands::Toolchain { op } => handle_toolchain_command(op),
         Commands::Doctor => run_doctor(),
     }
@@ -402,29 +426,38 @@ fn print_info() -> Result<()> {
                 None => Some(0), // Default is first
             };
 
+            let mut table = ui::Table::new(&["Id", "Name", "Version", "Source"]);
             for (i, tc) in toolchains.iter().enumerate() {
                 let is_in_use = in_use_idx == Some(i);
-                let status = "✓".green();
-                let short_ver = if tc.version.len() > 40 {
-                    format!("{}...", &tc.version[..40])
+
+                let short_ver = if tc.version.len() > 30 {
+                    format!("{}...", &tc.version[..30])
                 } else {
                     tc.version.clone()
                 };
-                let marker = if is_in_use {
-                    " ← in use".green().bold()
+
+                let mut row = vec![
+                    format!("{}", i + 1),
+                    tc.display_name.clone(),
+                    short_ver,
+                    tc.source.clone(),
+                ];
+
+                if is_in_use {
+                    row = row
+                        .into_iter()
+                        .map(|s| s.green().bold().to_string())
+                        .collect();
                 } else {
-                    "".normal()
-                };
-                println!(
-                    "  [{}] {} {} {} - {}{}",
-                    status,
-                    format!("[{}]", i + 1).dimmed(),
-                    tc.display_name.cyan(),
-                    format!("({})", short_ver).dimmed(),
-                    tc.source.yellow(),
-                    marker
-                );
+                    row[0] = row[0].dimmed().to_string();
+                    row[1] = row[1].cyan().to_string();
+                    row[2] = row[2].dimmed().to_string();
+                    row[3] = row[3].yellow().to_string();
+                }
+
+                table.add_row(row);
             }
+            table.print();
 
             // Show current ABI and config source
             println!();
@@ -460,6 +493,7 @@ fn print_info() -> Result<()> {
 
         // Build tools check (cmake, make, etc.)
         println!("\n{}", "Build Tools:".bold());
+        let mut table = ui::Table::new(&["Status", "Tool", "Version"]);
         let tools = vec![("cmake", "CMake"), ("make", "Make"), ("ninja", "Ninja")];
         for (bin, name) in tools {
             let output = std::process::Command::new(bin).arg("--version").output();
@@ -472,12 +506,13 @@ fn print_info() -> Result<()> {
                     } else {
                         first_line
                     };
-                    ("✓".green(), short.to_string())
+                    ("✓".green().to_string(), short.to_string())
                 }
-                _ => ("x".red(), "Not Found".dimmed().to_string()),
+                _ => ("x".red().to_string(), "Not Found".dimmed().to_string()),
             };
-            println!("  [{}] {:<10} : {}", status, name, version);
+            table.add_row(vec![status, name.to_string(), version]);
         }
+        table.print();
     }
 
     #[cfg(not(windows))]
@@ -485,18 +520,20 @@ fn print_info() -> Result<()> {
         // Unix fallback - check PATH
         let compilers = vec![("clang++", "LLVM C++"), ("g++", "GNU C++")];
 
+        let mut table = ui::Table::new(&["Status", "Binary", "Name", "Version"]);
         for (bin, name) in compilers {
             let output = std::process::Command::new(bin).arg("--version").output();
             let (status, version) = match output {
                 Ok(out) if out.status.success() => {
                     let stdout = String::from_utf8_lossy(&out.stdout);
                     let first_line = stdout.lines().next().unwrap_or("Detected").trim();
-                    ("✓".green(), first_line.to_string())
+                    ("✓".green().to_string(), first_line.to_string())
                 }
-                _ => ("x".red(), "Not Found".dimmed().to_string()),
+                _ => ("x".red().to_string(), "Not Found".dimmed().to_string()),
             };
-            println!("  [{}] {:<10} : ({}) {}", status, bin, name, version);
+            table.add_row(vec![status, bin.to_string(), name.to_string(), version]);
         }
+        table.print();
     }
 
     Ok(())
@@ -509,12 +546,64 @@ fn handle_toolchain_command(op: &Option<ToolchainOp>) -> Result<()> {
 
         match op {
             Some(ToolchainOp::List) => {
-                // Just redirect to cx info
-                println!(
-                    "{}",
-                    "Use 'cx info' to see all available toolchains".yellow()
-                );
-                println!("Or run 'cx toolchain' to select one interactively.");
+                let toolchains = discover_all_toolchains();
+                if toolchains.is_empty() {
+                    println!("{} No toolchains found.", "x".red());
+                } else {
+                    // Try to detect active toolchain to highlight it
+                    let config = crate::build::load_config().ok();
+                    let preferred_type = config
+                        .as_ref()
+                        .and_then(|c| c.build.as_ref())
+                        .and_then(|b| b.compiler.as_ref())
+                        .map(|s| match s.as_str() {
+                            "clang-cl" => toolchain::CompilerType::ClangCL,
+                            "clang" => toolchain::CompilerType::Clang,
+                            "g++" | "gcc" => toolchain::CompilerType::GCC,
+                            _ => toolchain::CompilerType::MSVC,
+                        });
+
+                    let active = toolchain::get_or_detect_toolchain(preferred_type, false).ok();
+
+                    println!("{} Available Toolchains:", "Available Toolchains:".bold());
+                    let mut table = crate::ui::Table::new(&["Id", "Name", "Version", "Source"]);
+
+                    for (i, tc) in toolchains.iter().enumerate() {
+                        let is_in_use = if let Some(a) = &active {
+                            tc.path == a.cc_path || tc.path == a.cxx_path
+                        } else {
+                            false
+                        };
+
+                        let short_ver = if tc.version.len() > 40 {
+                            format!("{}...", &tc.version[..40])
+                        } else {
+                            tc.version.clone()
+                        };
+
+                        let mut row = vec![
+                            format!("{}", i + 1),
+                            tc.display_name.clone(),
+                            short_ver,
+                            tc.source.to_string(),
+                        ];
+
+                        if is_in_use {
+                            row = row
+                                .into_iter()
+                                .map(|s| s.green().bold().to_string())
+                                .collect();
+                        } else {
+                            row[0] = row[0].dimmed().to_string();
+                            row[1] = row[1].cyan().to_string();
+                            row[2] = row[2].dimmed().to_string();
+                            row[3] = row[3].yellow().to_string();
+                        }
+
+                        table.add_row(row);
+                    }
+                    table.print();
+                }
             }
 
             None | Some(ToolchainOp::Select) => {
@@ -725,6 +814,7 @@ fn run_doctor() -> Result<()> {
         ("git", "Git", true),
     ];
 
+    let mut table = ui::Table::new(&["Status", "Tool", "Details"]);
     for (bin, name, required) in tools {
         let output = std::process::Command::new(bin).arg("--version").output();
         match output {
@@ -736,19 +826,32 @@ fn run_doctor() -> Result<()> {
                 } else {
                     first_line
                 };
-                println!("  {} {} - {}", "[✓]".green(), name, short);
+                table.add_row(vec![
+                    "✓".green().to_string(),
+                    name.to_string(),
+                    short.to_string(),
+                ]);
             }
             _ => {
                 if required {
-                    println!("  {} {} - Not found", "[✗]".red(), name);
+                    table.add_row(vec![
+                        "x".red().to_string(),
+                        name.to_string(),
+                        "Not found".to_string(),
+                    ]);
                     issues.push(format!("{} not found", name));
                     suggestions.push(format!("Install {}", name));
                 } else {
-                    println!("  {} {} - Not found (optional)", "[!]".yellow(), name);
+                    table.add_row(vec![
+                        "!".yellow().to_string(),
+                        name.to_string(),
+                        "Not found (optional)".to_string(),
+                    ]);
                 }
             }
         }
     }
+    table.print();
 
     // === Project Check ===
     println!("\n{}", "Project:".bold());

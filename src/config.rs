@@ -51,6 +51,7 @@ pub struct BuildConfig {
     pub bin: Option<String>,
     pub cflags: Option<Vec<String>>,
     pub libs: Option<Vec<String>>,
+    pub pch: Option<String>,
 }
 
 fn default_edition() -> String {
