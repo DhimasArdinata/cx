@@ -24,15 +24,13 @@ pub fn list() -> Result<()> {
     let mut count = 0;
 
     for entry in entries {
-        if let Ok(entry) = entry {
-            if let Ok(ft) = entry.file_type() {
-                if ft.is_dir() {
+        if let Ok(entry) = entry
+            && let Ok(ft) = entry.file_type()
+                && ft.is_dir() {
                     let name = entry.file_name();
                     table.add_row(vec![name.to_string_lossy().to_string()]);
                     count += 1;
                 }
-            }
-        }
     }
 
     if count == 0 {
@@ -72,18 +70,16 @@ pub fn prune_unused(keep_deps: &[String]) -> Result<()> {
     let entries = fs::read_dir(&cache_dir)?;
     let mut removed_count = 0;
 
-    for entry in entries {
-        if let Ok(entry) = entry {
-            let path = entry.path();
-            if path.is_dir() {
-                let name = entry.file_name().to_string_lossy().to_string();
-                if !keep_deps.contains(&name) {
-                    println!("   {} Removing unused: {}", "🗑️".red(), name);
-                    if let Err(e) = fs::remove_dir_all(&path) {
-                        println!("     Error removing {}: {}", name, e);
-                    } else {
-                        removed_count += 1;
-                    }
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if !keep_deps.contains(&name) {
+                println!("   {} Removing unused: {}", "🗑️".red(), name);
+                if let Err(e) = fs::remove_dir_all(&path) {
+                    println!("     Error removing {}: {}", name, e);
+                } else {
+                    removed_count += 1;
                 }
             }
         }

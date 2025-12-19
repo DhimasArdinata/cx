@@ -231,17 +231,16 @@ fn main() -> Result<()> {
             sanitize,
         }) => {
             let config = build::load_config()?;
-            build::build_project(
-                &config,
-                *release,
-                *verbose,
-                *dry_run,
-                *profile,
-                *wasm,
-                *lto,
-                sanitize.clone(),
-            )
-            .map(|_| ())
+            let options = build::BuildOptions {
+                release: *release,
+                verbose: *verbose,
+                dry_run: *dry_run,
+                enable_profile: *profile,
+                wasm: *wasm,
+                lto: *lto,
+                sanitize: sanitize.clone(),
+            };
+            build::build_project(&config, &options).map(|_| ())
         }
 
         Some(Commands::Run {
@@ -296,38 +295,11 @@ fn main() -> Result<()> {
 
 fn print_splash() {
     println!();
-    println!(
-        "   {}",
-        "▄▄▄       ▄▄▄▄▄      ▄▄▄   ▄▄▄  ▄▄▄▄▄▄▄▄▄▄▄ ".cyan()
-    );
-    println!(
-        "   {}",
-        "█  █     █     █     █  █ █  █  █         █ ".cyan()
-    );
-    println!(
-        "   {}",
-        "█  █     █  ▄  █      █ ▄▄▄ █   █  ▄▄▄▄▄▄▄█ ".cyan()
-    );
-    println!(
-        "   {}",
-        "█  █     █  █  █       █   █    █  █▄▄▄▄▄   ".cyan()
-    );
-    println!(
-        "   {}",
-        "█  █     █  █  █      █ ▄▄▄ █   █         █ ".cyan()
-    );
-    println!(
-        "   {}",
-        "█  █▄▄▄  █  █  █     █  █ █  █  █  ▄▄▄▄▄▄▄█ ".cyan()
-    );
-    println!(
-        "   {}",
-        "█      █ █  █  █    █  █   █  █ █  █        ".cyan()
-    );
-    println!(
-        "   {}",
-        "▀▀▀▀▀▀▀  ▀▀▀   ▀▀▀  ▀▀▀     ▀▀▀ ▀▀▀         ".cyan()
-    );
+    println!("   {}", " ██████  █████  ██   ██ ███████ ".cyan());
+    println!("   {}", "██      ██   ██  ██ ██  ██      ".cyan());
+    println!("   {}", "██      ███████   ███   █████   ".cyan());
+    println!("   {}", "██      ██   ██  ██ ██  ██      ".cyan());
+    println!("   {}", " ██████ ██   ██ ██   ██ ███████ ".cyan());
     println!();
     println!(
         "   {}",
@@ -425,17 +397,15 @@ fn init_project() -> Result<()> {
             .with_default(true)
             .prompt()?;
 
-        if confirm {
-            if let Some(config) = import::scan_project(&current_dir)? {
-                let toml_str = toml::to_string(&config)?;
-                fs::write("cx.toml", toml_str)?;
-                println!(
-                    "{} Imported project successfully. Run {} to build.",
-                    "✓".green(),
-                    "cx run".bold().white()
-                );
-                return Ok(());
-            }
+        if confirm && let Some(config) = import::scan_project(&current_dir)? {
+            let toml_str = toml::to_string(&config)?;
+            fs::write("cx.toml", toml_str)?;
+            println!(
+                "{} Imported project successfully. Run {} to build.",
+                "✓".green(),
+                "cx run".bold().white()
+            );
+            return Ok(());
         }
     }
 

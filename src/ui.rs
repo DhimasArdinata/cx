@@ -52,11 +52,7 @@ impl Table {
         let total_required = overhead + total_content_width;
 
         if total_required > max_width {
-            let available_content_width = if max_width > overhead {
-                max_width - overhead
-            } else {
-                0
-            };
+            let available_content_width = max_width.saturating_sub(overhead);
 
             let mut current_width = total_content_width;
 
@@ -176,7 +172,7 @@ fn strip_ansi(s: &str) -> String {
         if c == '\x1b' {
             if let Some(&'[') = chars.peek() {
                 chars.next();
-                while let Some(c) = chars.next() {
+                for c in chars.by_ref() {
                     if c == 'm' {
                         break;
                     }

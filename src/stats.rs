@@ -72,17 +72,15 @@ fn count_file_stats(path: &Path) -> Result<(usize, usize, usize, usize)> {
             if trimmed.contains("*/") {
                 in_block_comment = false;
             }
-        } else {
-            if trimmed.starts_with("//") {
-                comment += 1;
-            } else if trimmed.starts_with("/*") {
-                comment += 1;
-                if !trimmed.contains("*/") {
-                    in_block_comment = true;
-                }
-            } else {
-                code += 1;
+        } else if trimmed.starts_with("//") {
+            comment += 1;
+        } else if trimmed.starts_with("/*") {
+            comment += 1;
+            if !trimmed.contains("*/") {
+                in_block_comment = true;
             }
+        } else {
+            code += 1;
         }
     }
 

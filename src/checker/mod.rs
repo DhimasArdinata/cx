@@ -56,11 +56,10 @@ pub fn format_code() -> Result<()> {
             .arg(&path)
             .status();
 
-        if let Ok(s) = status {
-            if s.success() {
+        if let Ok(s) = status
+            && s.success() {
                 count += 1;
             }
-        }
         pb.inc(1);
     }
 
@@ -88,16 +87,14 @@ pub fn check_code() -> Result<()> {
 
     // Fetch dependencies for include paths
     let mut include_flags = Vec::new();
-    if let Some(deps) = &config.dependencies {
-        if !deps.is_empty() {
-            if let Ok((paths, cflags, _)) = deps::fetch_dependencies(deps) {
+    if let Some(deps) = &config.dependencies
+        && !deps.is_empty()
+            && let Ok((paths, cflags, _)) = deps::fetch_dependencies(deps) {
                 for p in paths {
                     include_flags.push(format!("-I{}", p.display()));
                 }
                 include_flags.extend(cflags);
             }
-        }
-    }
 
     let mut files = Vec::new();
     for entry in WalkDir::new("src").into_iter().filter_map(|e| e.ok()) {
@@ -133,11 +130,10 @@ pub fn check_code() -> Result<()> {
             cmd.arg("--");
             cmd.arg(format!("-std={}", config.package.edition));
 
-            if let Some(build_cfg) = &config.build {
-                if let Some(flags) = &build_cfg.cflags {
+            if let Some(build_cfg) = &config.build
+                && let Some(flags) = &build_cfg.cflags {
                     cmd.args(flags);
                 }
-            }
             cmd.args(&include_flags);
 
             // Execute clang-tidy

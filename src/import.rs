@@ -71,23 +71,18 @@ pub fn scan_project(path: &Path) -> Result<Option<CxConfig>> {
     });
 
     // 3. Construct Config
-    let compiler = if has_cpp {
+    let compiler = {
         #[cfg(windows)]
         {
             "msvc".to_string()
         }
         #[cfg(not(windows))]
         {
-            "clang++".to_string()
-        }
-    } else {
-        #[cfg(windows)]
-        {
-            "msvc".to_string()
-        }
-        #[cfg(not(windows))]
-        {
-            "clang".to_string()
+            if has_cpp {
+                "g++".to_string()
+            } else {
+                "gcc".to_string()
+            }
         }
     };
 

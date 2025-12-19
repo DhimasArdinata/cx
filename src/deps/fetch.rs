@@ -1,7 +1,7 @@
 use crate::config::Dependency;
 use anyhow::{Context, Result};
 use colored::*;
-use dirs;
+
 use git2::Repository;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
@@ -38,7 +38,7 @@ pub fn fetch_dependencies(
 
             // 1. Get CFLAGS (Include paths)
             match Command::new("pkg-config")
-                .args(&["--cflags", pkg_name])
+                .args(["--cflags", pkg_name])
                 .output()
             {
                 Ok(out) => {
@@ -53,26 +53,22 @@ pub fn fetch_dependencies(
             }
 
             // 2. Get LIBS (Link paths)
-            match Command::new("pkg-config")
-                .args(&["--libs", pkg_name])
-                .output()
-            {
-                Ok(out) => {
-                    if !out.status.success() {
-                        println!(
-                            "{} Package '{}' not found via pkg-config",
-                            "x".red(),
-                            pkg_name
-                        );
-                    }
-                    let out_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                    if !out_str.is_empty() {
-                        for flag in out_str.split_whitespace() {
-                            link_flags.push(flag.to_string());
-                        }
+            if let Ok(out) = Command::new("pkg-config")
+                .args(["--libs", pkg_name])
+                .output() {
+                if !out.status.success() {
+                    println!(
+                        "{} Package '{}' not found via pkg-config",
+                        "x".red(),
+                        pkg_name
+                    );
+                }
+                let out_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                if !out_str.is_empty() {
+                    for flag in out_str.split_whitespace() {
+                        link_flags.push(flag.to_string());
                     }
                 }
-                Err(_) => {}
             }
             continue;
         }
@@ -100,12 +96,12 @@ pub fn fetch_dependencies(
         };
 
         // Check for local vendor override
-        let vendor_path = std::env::current_dir()?.join("vendor").join(&name);
+        let vendor_path = std::env::current_dir()?.join("vendor").join(name);
 
         let (lib_path, is_vendor) = if vendor_path.exists() {
             (vendor_path, true)
         } else {
-            (cache_dir.join(&name), false)
+            (cache_dir.join(name), false)
         };
 
         // A. Download (Clone) or Open Existing
@@ -152,29 +148,26 @@ pub fn fetch_dependencies(
 
         // Lockfile Check
         let mut locked_commit = None;
-        if let Some(lock_entry) = lockfile.get(name) {
-            if lock_entry.git == url {
+        if let Some(lock_entry) = lockfile.get(name)
+            && lock_entry.git == url {
                 locked_commit = Some(lock_entry.rev.clone());
             }
-        }
 
         if let Some(r) = rev {
             // 1. Explicit Config Commit (Highest Priority)
-            if let Ok(oid) = git2::Oid::from_str(&r) {
-                if let Ok(obj) = repo.find_object(oid, None) {
+            if let Ok(oid) = git2::Oid::from_str(&r)
+                && let Ok(obj) = repo.find_object(oid, None) {
                     obj_to_checkout = Some(obj);
                     checkout_msg = format!("commit {}", &r[..7]);
                 }
-            }
         } else if let Some(t) = tag {
             // 2. Explicit Tag
             let refname = format!("refs/tags/{}", t);
-            if let Ok(r_ref) = repo.find_reference(&refname) {
-                if let Ok(obj) = r_ref.peel_to_commit() {
+            if let Ok(r_ref) = repo.find_reference(&refname)
+                && let Ok(obj) = r_ref.peel_to_commit() {
                     obj_to_checkout = Some(obj.into_object());
                     checkout_msg = format!("tag {}", t);
                 }
-            }
         } else if let Some(b) = branch {
             // 3. Explicit Branch
             if let Ok(r_ref) = repo.find_branch(&b, git2::BranchType::Local) {
@@ -184,21 +177,19 @@ pub fn fetch_dependencies(
                 }
             } else {
                 let remote_ref = format!("origin/{}", b);
-                if let Ok(r_ref) = repo.find_branch(&remote_ref, git2::BranchType::Remote) {
-                    if let Ok(obj) = r_ref.get().peel_to_commit() {
+                if let Ok(r_ref) = repo.find_branch(&remote_ref, git2::BranchType::Remote)
+                    && let Ok(obj) = r_ref.get().peel_to_commit() {
                         obj_to_checkout = Some(obj.into_object());
                         checkout_msg = format!("branch {}", b);
                     }
-                }
             }
         } else if let Some(rev) = locked_commit {
             // 4. Lockfile Commit (Zero Config Reproducibility)
-            if let Ok(oid) = git2::Oid::from_str(&rev) {
-                if let Ok(obj) = repo.find_object(oid, None) {
+            if let Ok(oid) = git2::Oid::from_str(&rev)
+                && let Ok(obj) = repo.find_object(oid, None) {
                     obj_to_checkout = Some(obj);
                     checkout_msg = format!("locked {}", &rev[..7]);
                 }
-            }
         }
 
         if let Some(obj) = obj_to_checkout {
@@ -211,12 +202,11 @@ pub fn fetch_dependencies(
         }
 
         // Update Lockfile with current HEAD
-        if let Ok(head) = repo.head() {
-            if let Ok(target) = head.peel_to_commit() {
+        if let Ok(head) = repo.head()
+            && let Ok(target) = head.peel_to_commit() {
                 let current_hash = target.id().to_string();
                 lockfile.insert(name.clone(), url.clone(), current_hash);
             }
-        }
 
         // C. Build Custom Script (If any)
         if let Some(cmd_str) = build_script {
@@ -231,12 +221,12 @@ pub fn fetch_dependencies(
                 println!("   {} Building {}...", "🔨".yellow(), name);
                 let status = if cfg!(target_os = "windows") {
                     Command::new("cmd")
-                        .args(&["/C", &cmd_str])
+                        .args(["/C", &cmd_str])
                         .current_dir(&lib_path)
                         .status()
                 } else {
                     Command::new("sh")
-                        .args(&["-c", &cmd_str])
+                        .args(["-c", &cmd_str])
                         .current_dir(&lib_path)
                         .status()
                 };

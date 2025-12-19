@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Supported compiler types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum CompilerType {
     /// Microsoft Visual C++ (cl.exe)
     MSVC,

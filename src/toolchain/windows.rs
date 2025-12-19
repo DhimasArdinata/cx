@@ -2,7 +2,7 @@
 
 use super::types::{CompilerType, Toolchain, ToolchainError, VSInstallation};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Known paths where vswhere.exe might be located
@@ -94,7 +94,7 @@ fn parse_vswhere_output(json_str: &str) -> Result<Vec<VSInstallation>, Toolchain
 }
 
 /// Find the MSVC toolset path within a VS installation
-pub fn find_msvc_toolset(vs_path: &PathBuf) -> Option<(PathBuf, String)> {
+pub fn find_msvc_toolset(vs_path: &Path) -> Option<(PathBuf, String)> {
     let vc_tools_path = vs_path.join("VC").join("Tools").join("MSVC");
     if !vc_tools_path.exists() {
         return None;
@@ -116,7 +116,7 @@ pub fn find_msvc_toolset(vs_path: &PathBuf) -> Option<(PathBuf, String)> {
 }
 
 /// Find cl.exe within MSVC toolset
-pub fn find_cl_exe(toolset_path: &PathBuf) -> Option<PathBuf> {
+pub fn find_cl_exe(toolset_path: &Path) -> Option<PathBuf> {
     // Try x64 first, then x86
     for host in ["Hostx64", "Hostx86"] {
         for target in ["x64", "x86"] {
@@ -134,7 +134,7 @@ pub fn find_cl_exe(toolset_path: &PathBuf) -> Option<PathBuf> {
 }
 
 /// Find clang-cl bundled with Visual Studio
-pub fn find_bundled_clang_cl(vs_path: &PathBuf) -> Option<PathBuf> {
+pub fn find_bundled_clang_cl(vs_path: &Path) -> Option<PathBuf> {
     // VS 2019+ bundles clang in VC\Tools\Llvm
     let paths = [
         vs_path
@@ -152,16 +152,11 @@ pub fn find_bundled_clang_cl(vs_path: &PathBuf) -> Option<PathBuf> {
             .join("clang-cl.exe"),
     ];
 
-    for p in paths {
-        if p.exists() {
-            return Some(p);
-        }
-    }
-    None
+    paths.into_iter().find(|p| p.exists())
 }
 
 /// Find clang++ bundled with Visual Studio (regular clang, not clang-cl)
-pub fn find_bundled_clang(vs_path: &PathBuf) -> Option<PathBuf> {
+pub fn find_bundled_clang(vs_path: &Path) -> Option<PathBuf> {
     // VS bundles clang++ in VC\Tools\Llvm
     let paths = [
         vs_path
@@ -179,12 +174,7 @@ pub fn find_bundled_clang(vs_path: &PathBuf) -> Option<PathBuf> {
             .join("clang++.exe"),
     ];
 
-    for p in paths {
-        if p.exists() {
-            return Some(p);
-        }
-    }
-    None
+    paths.into_iter().find(|p| p.exists())
 }
 
 /// Find standalone LLVM installation
@@ -202,12 +192,12 @@ pub fn find_standalone_llvm() -> Option<PathBuf> {
         use winreg::RegKey;
         use winreg::enums::*;
 
-        if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"SOFTWARE\LLVM\LLVM") {
-            if let Ok(path) = hklm.get_value::<String, _>("") {
-                let clang_cl = PathBuf::from(&path).join("bin").join("clang-cl.exe");
-                if clang_cl.exists() {
-                    return Some(clang_cl);
-                }
+        if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"SOFTWARE\LLVM\LLVM")
+            && let Ok(path) = hklm.get_value::<String, _>("")
+        {
+            let clang_cl = PathBuf::from(&path).join("bin").join("clang-cl.exe");
+            if clang_cl.exists() {
+                return Some(clang_cl);
             }
         }
     }
@@ -230,12 +220,12 @@ pub fn find_standalone_clang() -> Option<PathBuf> {
         use winreg::RegKey;
         use winreg::enums::*;
 
-        if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"SOFTWARE\LLVM\LLVM") {
-            if let Ok(path) = hklm.get_value::<String, _>("") {
-                let clang_pp = PathBuf::from(&path).join("bin").join("clang++.exe");
-                if clang_pp.exists() {
-                    return Some(clang_pp);
-                }
+        if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"SOFTWARE\LLVM\LLVM")
+            && let Ok(path) = hklm.get_value::<String, _>("")
+        {
+            let clang_pp = PathBuf::from(&path).join("bin").join("clang++.exe");
+            if clang_pp.exists() {
+                return Some(clang_pp);
             }
         }
     }
@@ -244,7 +234,7 @@ pub fn find_standalone_clang() -> Option<PathBuf> {
 }
 
 /// Load environment variables from vcvars64.bat
-pub fn load_vcvars_env(vs_path: &PathBuf) -> Result<HashMap<String, String>, ToolchainError> {
+pub fn load_vcvars_env(vs_path: &Path) -> Result<HashMap<String, String>, ToolchainError> {
     let vcvars_path = vs_path
         .join("VC")
         .join("Auxiliary")
@@ -316,7 +306,7 @@ pub fn load_vcvars_env(vs_path: &PathBuf) -> Result<HashMap<String, String>, Too
 }
 
 /// Get compiler version string
-fn get_compiler_version(compiler_path: &PathBuf, is_msvc: bool) -> String {
+fn get_compiler_version(compiler_path: &Path, is_msvc: bool) -> String {
     let output = if is_msvc {
         Command::new(compiler_path).output()
     } else {
@@ -526,17 +516,17 @@ pub fn discover_all_toolchains() -> Vec<AvailableToolchain> {
     if let Ok(vs_installations) = detect_vs_installations() {
         for vs in &vs_installations {
             // MSVC (cl.exe)
-            if let Some((toolset_path, _version)) = find_msvc_toolset(&vs.install_path) {
-                if let Some(cl) = find_cl_exe(&toolset_path) {
-                    let version = get_compiler_version(&cl, true);
-                    toolchains.push(AvailableToolchain {
-                        display_name: "MSVC (cl.exe)".to_string(),
-                        compiler_type: CompilerType::MSVC,
-                        path: cl,
-                        version,
-                        source: vs.display_name.clone(),
-                    });
-                }
+            if let Some((toolset_path, _version)) = find_msvc_toolset(&vs.install_path)
+                && let Some(cl) = find_cl_exe(&toolset_path)
+            {
+                let version = get_compiler_version(&cl, true);
+                toolchains.push(AvailableToolchain {
+                    display_name: "MSVC (cl.exe)".to_string(),
+                    compiler_type: CompilerType::MSVC,
+                    path: cl,
+                    version,
+                    source: vs.display_name.clone(),
+                });
             }
 
             // Bundled Clang-CL
@@ -589,29 +579,29 @@ pub fn discover_all_toolchains() -> Vec<AvailableToolchain> {
     }
 
     // 3. GCC from PATH (MSYS2/MinGW)
-    if let Ok(output) = std::process::Command::new("where").arg("g++").output() {
-        if output.status.success() {
-            let paths = String::from_utf8_lossy(&output.stdout);
-            for line in paths.lines() {
-                let path = PathBuf::from(line.trim());
-                if path.exists() {
-                    let version = get_compiler_version(&path, false);
-                    let source = if line.contains("msys64") {
-                        "MSYS2/MinGW"
-                    } else if line.contains("mingw") {
-                        "MinGW"
-                    } else {
-                        "PATH"
-                    };
-                    toolchains.push(AvailableToolchain {
-                        display_name: "GCC (g++.exe)".to_string(),
-                        compiler_type: CompilerType::GCC,
-                        path,
-                        version,
-                        source: source.to_string(),
-                    });
-                    break; // Only take first g++ found
-                }
+    if let Ok(output) = std::process::Command::new("where").arg("g++").output()
+        && output.status.success()
+    {
+        let paths = String::from_utf8_lossy(&output.stdout);
+        for line in paths.lines() {
+            let path = PathBuf::from(line.trim());
+            if path.exists() {
+                let version = get_compiler_version(&path, false);
+                let source = if line.contains("msys64") {
+                    "MSYS2/MinGW"
+                } else if line.contains("mingw") {
+                    "MinGW"
+                } else {
+                    "PATH"
+                };
+                toolchains.push(AvailableToolchain {
+                    display_name: "GCC (g++.exe)".to_string(),
+                    compiler_type: CompilerType::GCC,
+                    path,
+                    version,
+                    source: source.to_string(),
+                });
+                break; // Only take first g++ found
             }
         }
     }

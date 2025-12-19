@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use colored::*;
-use dirs;
+
 use std::fs;
 use std::path::Path;
 
@@ -37,8 +37,8 @@ pub fn clean(cache: bool, all: bool, unused: bool) -> Result<()> {
     }
 
     // 2. Clean Cache (Global)
-    if cache {
-        if let Some(home) = dirs::home_dir() {
+    if cache
+        && let Some(home) = dirs::home_dir() {
             let cache_dir = home.join(".cx").join("cache");
             if cache_dir.exists() {
                 println!(
@@ -54,17 +54,15 @@ pub fn clean(cache: bool, all: bool, unused: bool) -> Result<()> {
                 println!("{} Global cache not found or already empty.", "!".yellow());
             }
         }
-    }
 
     // 3. Clean All (Docs, etc.)
-    if all {
-        if Path::new("docs").exists() {
+    if all
+        && Path::new("docs").exists() {
             fs::remove_dir_all("docs").context("Failed to remove docs")?;
             println!("{} Removed docs/", "🗑️".red());
             cleaned = true;
         }
         // Could add other artifacts here
-    }
 
     if cleaned {
         println!("{} Clean complete.", "✓".green());

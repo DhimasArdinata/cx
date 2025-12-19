@@ -39,10 +39,7 @@ pub fn vendor_dependencies() -> Result<()> {
 
     for (name, dep) in deps {
         // Skip pkg-config deps
-        match dep {
-            Dependency::Complex { pkg: Some(_), .. } => continue,
-            _ => {}
-        }
+        if let Dependency::Complex { pkg: Some(_), .. } = dep { continue }
 
         let source_path = cache_dir.join(&name);
         let dest_path = vendor_dir.join(&name);

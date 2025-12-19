@@ -1,15 +1,1422 @@
 {
-    "raylib": "https://github.com/raysan5/raylib.git",
-    "sdl2": "https://github.com/libsdl-org/SDL.git",
-    "sfml": "https://github.com/SFML/SFML.git",
-    "json": "https://github.com/nlohmann/json.git",
-    "fmt": "https://github.com/fmtlib/fmt.git",
-    "spdlog": "https://github.com/gabime/spdlog.git",
-    "mongoose": "https://github.com/cesanta/mongoose.git",
-    "httplib": "https://github.com/yhirose/cpp-httplib.git",
-    "cpp-httplib": "https://github.com/yhirose/cpp-httplib.git",
-    "cpr": "https://github.com/libcpr/cpr.git",
-    "catch2": "https://github.com/catchorg/Catch2.git",
-    "doctest": "https://github.com/doctest/doctest.git",
-    "gtest": "https://github.com/google/googletest.git"
+    "abseil": {
+        "url": "https://github.com/abseil/abseil-cpp.git",
+        "description": "Abseil Common Libraries (C++)"
+    },
+    "acl": {
+        "url": "https://github.com/acl-dev/acl.git",
+        "description": "Advanced C/C++ library for network/server development"
+    },
+    "adept": {
+        "url": "https://github.com/rjhogan/Adept.git",
+        "description": "Automatic Differentiation using Expression Templates"
+    },
+    "aflplusplus": {
+        "url": "https://github.com/AFLplusplus/AFLplusplus.git",
+        "description": "The fuzzer AFL++ for C/C++"
+    },
+    "alembic": {
+        "url": "https://github.com/alembic/alembic.git",
+        "description": "Alembic is an open computer graphics interchange framework via HDF5"
+    },
+    "allegro5": {
+        "url": "https://github.com/liballeg/allegro5.git",
+        "description": "A game programming library"
+    },
+    "angelscript": {
+        "url": "https://github.com/codecat/angelscript-mirror.git",
+        "description": "A flexible cross-platform scripting library"
+    },
+    "antlr4": {
+        "url": "https://github.com/antlr/antlr4.git",
+        "description": "ANTLR 4 Runtime for C++"
+    },
+    "apr": {
+        "url": "https://github.com/apache/apr.git",
+        "description": "Apache Portable Runtime"
+    },
+    "arduinojson": {
+        "url": "https://github.com/bblanchon/ArduinoJson.git",
+        "description": "Efficient JSON serialization for embedded C++"
+    },
+    "argparse": {
+        "url": "https://github.com/p-ranav/argparse.git",
+        "description": "Argument Parser for Modern C++"
+    },
+    "armadillo": {
+        "url": "https://github.com/arma-code/armadillo-code.git",
+        "description": "C++ library for linear algebra & scientific computing"
+    },
+    "arrow": {
+        "url": "https://github.com/apache/arrow.git",
+        "description": "Apache Arrow C++ implementation"
+    },
+    "asio": {
+        "url": "https://github.com/chriskohlhoff/asio.git",
+        "description": "Cross-platform C++ library for network and low-level I/O"
+    },
+    "asmjit": {
+        "url": "https://github.com/asmjit/asmjit.git",
+        "description": "Complete x86/x64 JIT and remote assembler for C++"
+    },
+    "assimp": {
+        "url": "https://github.com/assimp/assimp.git",
+        "description": "Open Asset Import Library (assimp)"
+    },
+    "atomic_queue": {
+        "url": "https://github.com/max0x7ba/atomic_queue.git",
+        "description": "C++ generic loc-free queue"
+    },
+    "aubio": {
+        "url": "https://github.com/aubio/aubio.git",
+        "description": "A library for audio and music analysis"
+    },
+    "avro": {
+        "url": "https://github.com/apache/avro.git",
+        "description": "Apache Avro C++"
+    },
+    "aws-sdk-cpp": {
+        "url": "https://github.com/aws/aws-sdk-cpp.git",
+        "description": "AWS SDK for C++"
+    },
+    "azmq": {
+        "url": "https://github.com/zeromq/azmq.git",
+        "description": "Boost Asio ZeroMQ"
+    },
+    "azure-sdk-cpp": {
+        "url": "https://github.com/Azure/azure-sdk-for-cpp.git",
+        "description": "Azure SDK for C++"
+    },
+    "backward-cpp": {
+        "url": "https://github.com/bombela/backward-cpp.git",
+        "description": "A beautiful stack trace pretty printer for C++"
+    },
+    "base64": {
+        "url": "https://github.com/tobiaslocker/base64.git",
+        "description": "Fast Base64 encoding/decoding"
+    },
+    "basis_universal": {
+        "url": "https://github.com/BinomialLLC/basis_universal.git",
+        "description": "Basis Universal GPU Texture Codec"
+    },
+    "bearssl": {
+        "url": "https://github.com/bearssl/bearssl.git",
+        "description": "BearSSL is an implementation of the SSL/TLS protocol"
+    },
+    "benchmark": {
+        "url": "https://github.com/google/benchmark.git",
+        "description": "A microbenchmark support library"
+    },
+    "berry": {
+        "url": "https://github.com/skiars/berry.git",
+        "description": "A ultra-lightweight embedded scripting language"
+    },
+    "bgfx": {
+        "url": "https://github.com/bkaradzic/bgfx.git",
+        "description": "Cross-platform, graphics API agnostic, \"Bring Your Own Engine/Framework\" style rendering library"
+    },
+    "binlog": {
+        "url": "https://github.com/facebookincubator/binlog.git",
+        "description": "A high performance C++ structured logging library"
+    },
+    "bitsery": {
+        "url": "https://github.com/fraillt/bitsery.git",
+        "description": "Header only C++ binary serialization library"
+    },
+    "blaze": {
+        "url": "https://github.com/blaze-lib/blaze.git",
+        "description": "High-performance C++ math library"
+    },
+    "blosc": {
+        "url": "https://github.com/Blosc/c-blosc.git",
+        "description": "A blocking, shuffling and loss-less compression library"
+    },
+    "boost": {
+        "url": "https://github.com/boostorg/boost.git",
+        "description": "Boost C++ Libraries"
+    },
+    "botan": {
+        "url": "https://github.com/randombit/botan.git",
+        "description": "Cryptography and TLS for C++11"
+    },
+    "box2d": {
+        "url": "https://github.com/erincatto/box2d.git",
+        "description": "A 2D Physics Engine for Games"
+    },
+    "brotli": {
+        "url": "https://github.com/google/brotli.git",
+        "description": "Brotli compression format"
+    },
+    "bullet3": {
+        "url": "https://github.com/bulletphysics/bullet3.git",
+        "description": "Real-time collision detection and multi-physics simulation"
+    },
+    "bzip2": {
+        "url": "https://github.com/libarchive/bzip2.git",
+        "description": "A high-quality data compressor"
+    },
+    "c-ares": {
+        "url": "https://github.com/c-ares/c-ares.git",
+        "description": "A C library for asynchronous DNS requests"
+    },
+    "cairo": {
+        "url": "https://github.com/freedesktop/cairo.git",
+        "description": "2D graphics library with support for multiple output devices"
+    },
+    "capnproto": {
+        "url": "https://github.com/capnproto/capnproto.git",
+        "description": "Cap'n Proto serialization/RPC system"
+    },
+    "casadi": {
+        "url": "https://github.com/casadi/casadi.git",
+        "description": "A framework for algorithmic differentiation and compilation"
+    },
+    "catch2": {
+        "url": "https://github.com/catchorg/Catch2.git",
+        "description": "A modern, C++-native, header-only, test framework"
+    },
+    "celero": {
+        "url": "https://github.com/DigitalInBlue/Celero.git",
+        "description": "C++ Benchmark Authoring Library"
+    },
+    "cereal": {
+        "url": "https://github.com/USCiLab/cereal.git",
+        "description": "A C++11 library for serialization"
+    },
+    "ceres-solver": {
+        "url": "https://github.com/ceres-solver/ceres-solver.git",
+        "description": "A large scale non-linear least squares solver"
+    },
+    "cgal": {
+        "url": "https://github.com/CGAL/cgal.git",
+        "description": "Computational Geometry Algorithms Library"
+    },
+    "chaiscript": {
+        "url": "https://github.com/ChaiScript/ChaiScript.git",
+        "description": "Embedded Scripting Language designed for C++"
+    },
+    "chipmunk": {
+        "url": "https://github.com/slembcke/Chipmunk2D.git",
+        "description": "A fast and lightweight 2D game physics library"
+    },
+    "cityhash": {
+        "url": "https://github.com/google/cityhash.git",
+        "description": "CityHash, a family of hash functions for strings"
+    },
+    "civetweb": {
+        "url": "https://github.com/civetweb/civetweb.git",
+        "description": "Embedded C/C++ web server"
+    },
+    "cjson": {
+        "url": "https://github.com/DaveGamble/cJSON.git",
+        "description": "Ultralightweight JSON parser in ANSI C"
+    },
+    "cli11": {
+        "url": "https://github.com/CLIUtils/CLI11.git",
+        "description": "Command line parser for C++11"
+    },
+    "cmock": {
+        "url": "https://github.com/ThrowTheSwitch/CMock.git",
+        "description": "Mocking framework for C"
+    },
+    "cocos2d-x": {
+        "url": "https://github.com/cocos2d/cocos2d-x.git",
+        "description": "A multi-platform framework for building 2D games"
+    },
+    "concurrentqueue": {
+        "url": "https://github.com/cameron314/concurrentqueue.git",
+        "description": "A fast multi-producer, multi-consumer lock-free concurrent queue for C++11"
+    },
+    "cpp-httplib": {
+        "url": "https://github.com/yhirose/cpp-httplib.git",
+        "description": "A C++11 single-file header-only cross platform HTTP/HTTPS library"
+    },
+    "cpp-jwt": {
+        "url": "https://github.com/arun11299/cpp-jwt.git",
+        "description": "C++ JSON Web Token Library"
+    },
+    "cpp-peglib": {
+        "url": "https://github.com/yhirose/cpp-peglib.git",
+        "description": "Available single-header C++11/17 PEG parser generator"
+    },
+    "cpp-taskflow": {
+        "url": "https://github.com/cpp-taskflow/cpp-taskflow.git",
+        "description": "Modern C++ Parallel Task Programming"
+    },
+    "cppkafka": {
+        "url": "https://github.com/mfontanini/cppkafka.git",
+        "description": "Modern C++ wrapper for rdkafka"
+    },
+    "cpputest": {
+        "url": "https://github.com/cpputest/cpputest.git",
+        "description": "Unit testing and mocking framework for C/C++"
+    },
+    "cppzmq": {
+        "url": "https://github.com/zeromq/cppzmq.git",
+        "description": "Header-only C++ binding for libzmq"
+    },
+    "cpr": {
+        "url": "https://github.com/libcpr/cpr.git",
+        "description": "C++ Requests: Curl for People"
+    },
+    "crow": {
+        "url": "https://github.com/CrowCpp/Crow.git",
+        "description": "A Fast and Easy to use microframework for the web"
+    },
+    "cryptopp": {
+        "url": "https://github.com/weidai11/cryptopp.git",
+        "description": "Crypto++ Library is a free C++ class library of cryptographic schemes"
+    },
+    "ctre": {
+        "url": "https://github.com/hanickadot/compile-time-regular-expressions.git",
+        "description": "Compile Time Regular Expressions"
+    },
+    "curl": {
+        "url": "https://github.com/curl/curl.git",
+        "description": "Command line tool and library for transferring data with URLs"
+    },
+    "cxxopts": {
+        "url": "https://github.com/jarro2783/cxxopts.git",
+        "description": "Lightweight C++ command line option parser"
+    },
+    "darknet": {
+        "url": "https://github.com/pjreddie/darknet.git",
+        "description": "Convolutional Neural Networks"
+    },
+    "date": {
+        "url": "https://github.com/HowardHinnant/date.git",
+        "description": "A date and time library based on the C++11/14/17 <chrono> header"
+    },
+    "dbg-macro": {
+        "url": "https://github.com/sharkdp/dbg-macro.git",
+        "description": "A dbg(...) macro for C++"
+    },
+    "diligent-engine": {
+        "url": "https://github.com/DiligentGraphics/DiligentEngine.git",
+        "description": "A modern cross-platform low-level graphics library"
+    },
+    "directx-shader-compiler": {
+        "url": "https://github.com/microsoft/DirectXShaderCompiler.git",
+        "description": "A compiler for High-Level Shader Language (HLSL)"
+    },
+    "dlib": {
+        "url": "https://github.com/davisking/dlib.git",
+        "description": "A toolkit for making real world machine learning and data analysis applications in C++"
+    },
+    "doctest": {
+        "url": "https://github.com/doctest/doctest.git",
+        "description": "The fastest feature-rich C++11/14/17/20 single-header testing framework"
+    },
+    "dpdk": {
+        "url": "https://github.com/DPDK/dpdk.git",
+        "description": "Data Plane Development Kit"
+    },
+    "draco": {
+        "url": "https://github.com/google/draco.git",
+        "description": "A library for compressing and decompressing 3D geometric meshes and point clouds"
+    },
+    "drogon": {
+        "url": "https://github.com/drogonframework/drogon.git",
+        "description": "A high-performance C++14/17 HTTP web application framework used by TechEmpower benchmarks"
+    },
+    "duckdb": {
+        "url": "https://github.com/duckdb/duckdb.git",
+        "description": "DuckDB is an in-process SQL OLAP Database Management System"
+    },
+    "duktape": {
+        "url": "https://github.com/svaarala/duktape.git",
+        "description": "An embeddable Javascript engine, with a focus on portability and compact footprint"
+    },
+    "eastl": {
+        "url": "https://github.com/electronicarts/EASTL.git",
+        "description": "Electronic Arts Standard Template Library"
+    },
+    "easyloggingpp": {
+        "url": "https://github.com/amrayn/easyloggingpp.git",
+        "description": "Single header C++ logging library"
+    },
+    "eigen": {
+        "url": "https://github.com/libeigen/eigen.git",
+        "description": "C++ template library for linear algebra: matrices, vectors, numerical solvers, and related algorithms"
+    },
+    "embree": {
+        "url": "https://github.com/embree/embree.git",
+        "description": "Collection of high-performance ray tracing kernels"
+    },
+    "enet": {
+        "url": "https://github.com/lsalzman/enet.git",
+        "description": "Reliable UDP networking library"
+    },
+    "entt": {
+        "url": "https://github.com/skypjack/entt.git",
+        "description": "Gaming meets modern C++ - a fast and reliable entity component system (ECS)"
+    },
+    "etl": {
+        "url": "https://github.com/ETLCPP/etl.git",
+        "description": "Embedded Template Library"
+    },
+    "exiv2": {
+        "url": "https://github.com/Exiv2/exiv2.git",
+        "description": "Image metadata library"
+    },
+    "faiss": {
+        "url": "https://github.com/facebookresearch/faiss.git",
+        "description": "A library for efficient similarity search and clustering of dense vectors"
+    },
+    "fakeit": {
+        "url": "https://github.com/eranpeer/FakeIt.git",
+        "description": "C++ mocking framework"
+    },
+    "fast-cpp-csv-parser": {
+        "url": "https://github.com/ben-strasser/fast-cpp-csv-parser.git",
+        "description": "Fast C++ CSV Parser"
+    },
+    "fast-dds": {
+        "url": "https://github.com/eProsima/Fast-DDS.git",
+        "description": "The most complete DDS - Proven: plenty of success cases"
+    },
+    "fff": {
+        "url": "https://github.com/meekrosoft/fff.git",
+        "description": "Fake Function Framework"
+    },
+    "ffmpeg": {
+        "url": "https://github.com/FFmpeg/FFmpeg.git",
+        "description": "A complete, cross-platform solution to record, convert and stream audio and video"
+    },
+    "fftw3": {
+        "url": "https://github.com/FFTW/fftw3.git",
+        "description": "Fastest Fourier Transform in the West"
+    },
+    "filament": {
+        "url": "https://github.com/google/filament.git",
+        "description": "A real-time physically based rendering engine for Android, iOS, Windows, Linux, macOS, and WASM/WebGL"
+    },
+    "flatbuffers": {
+        "url": "https://github.com/google/flatbuffers.git",
+        "description": "Memory Efficient Serialization Library"
+    },
+    "flecs": {
+        "url": "https://github.com/SanderMertens/flecs.git",
+        "description": "A fast and lightweight Entity Component System"
+    },
+    "fltk": {
+        "url": "https://github.com/fltk/fltk.git",
+        "description": "Fast Light Toolkit"
+    },
+    "fmt": {
+        "url": "https://github.com/fmtlib/fmt.git",
+        "description": "A modern formatting library"
+    },
+    "folly": {
+        "url": "https://github.com/facebook/folly.git",
+        "description": "An open-source C++ library developed and used at Facebook"
+    },
+    "freeglut": {
+        "url": "https://github.com/freeglut/freeglut.git",
+        "description": "Open Source alternative to the OpenGL Utility Toolkit (GLUT) library"
+    },
+    "freetype": {
+        "url": "https://github.com/freetype/freetype.git",
+        "description": "A freely available software library to render fonts"
+    },
+    "frozen": {
+        "url": "https://github.com/serge-sans-paille/frozen.git",
+        "description": "A header-only, constexpr alternative to gperf for C++14"
+    },
+    "fruit": {
+        "url": "https://github.com/google/fruit.git",
+        "description": "Dependency Injection Framework for C++"
+    },
+    "ftxui": {
+        "url": "https://github.com/ArthurSonzogni/FTXUI.git",
+        "description": "Functional Terminal User Interface"
+    },
+    "g2o": {
+        "url": "https://github.com/RainerKuemmerle/g2o.git",
+        "description": "A General Graph Optimization framework"
+    },
+    "gainput": {
+        "url": "https://github.com/jkuhlmann/gainput.git",
+        "description": "Input library for games"
+    },
+    "gamenetworkingsockets": {
+        "url": "https://github.com/ValveSoftware/GameNetworkingSockets.git",
+        "description": "Reliable & unreliable messaging over UDP"
+    },
+    "gflags": {
+        "url": "https://github.com/gflags/gflags.git",
+        "description": "C++ library for command line flag processing"
+    },
+    "glbinding": {
+        "url": "https://github.com/cginternals/glbinding.git",
+        "description": "A C++ binding for the OpenGL API, generated using the gl.xml specification"
+    },
+    "glew": {
+        "url": "https://github.com/nigels-com/glew.git",
+        "description": "The OpenGL Extension Wrangler Library"
+    },
+    "glfw": {
+        "url": "https://github.com/glfw/glfw.git",
+        "description": "A multi-platform library for OpenGL, OpenGL ES, Vulkan, window and input"
+    },
+    "glib": {
+        "url": "https://github.com/GNOME/glib.git",
+        "description": "GLib is the low-level core library that forms the basis for projects such as GTK+ and GNOME"
+    },
+    "glm": {
+        "url": "https://github.com/g-truc/glm.git",
+        "description": "OpenGL Mathematics (GLM)"
+    },
+    "glog": {
+        "url": "https://github.com/google/glog.git",
+        "description": "C++ implementation of the Google Logging module"
+    },
+    "glslang": {
+        "url": "https://github.com/KhronosGroup/glslang.git",
+        "description": "Khronos-reference front end for GLSL/ESSL, partial front end for HLSL, and a SPIR-V generator"
+    },
+    "gnuplot-iostream": {
+        "url": "https://github.com/dstahlke/gnuplot-iostream.git",
+        "description": "C++ interface to gnuplot"
+    },
+    "godot": {
+        "url": "https://github.com/godotengine/godot.git",
+        "description": "Godot Engine"
+    },
+    "google-cloud-cpp": {
+        "url": "https://github.com/googleapis/google-cloud-cpp.git",
+        "description": "Google Cloud Client Libraries for C++"
+    },
+    "googletest": {
+        "url": "https://github.com/google/googletest.git",
+        "description": "GoogleTest and GoogleMock"
+    },
+    "grpc": {
+        "url": "https://github.com/grpc/grpc.git",
+        "description": "The C based gRPC (C++, Python, Ruby, Objective-C, PHP, C#)"
+    },
+    "gsl": {
+        "url": "https://github.com/microsoft/GSL.git",
+        "description": "Guidelines Support Library"
+    },
+    "gtest": {
+        "url": "https://github.com/google/googletest.git",
+        "description": "GoogleTest"
+    },
+    "gumbo-parser": {
+        "url": "https://github.com/google/gumbo-parser.git",
+        "description": "An HTML5 parsing library in pure C99"
+    },
+    "gzip-hpp": {
+        "url": "https://github.com/mapbox/gzip-hpp.git",
+        "description": "Gzip header-only C++ library"
+    },
+    "h3": {
+        "url": "https://github.com/uber/h3.git",
+        "description": "Hexagonal hierarchical geospatial indexing system"
+    },
+    "halide": {
+        "url": "https://github.com/halide/Halide.git",
+        "description": "A language for image processing and computational photography"
+    },
+    "hidapi": {
+        "url": "https://github.com/libusb/hidapi.git",
+        "description": "A Simple library for communicating with HID devices"
+    },
+    "highfive": {
+        "url": "https://github.com/BlueBrain/HighFive.git",
+        "description": "High-level C++ HDF5 interface"
+    },
+    "highway": {
+        "url": "https://github.com/google/highway.git",
+        "description": "Performance-portable, SIMD-native free-standing C++ library"
+    },
+    "hiredis": {
+        "url": "https://github.com/redis/hiredis.git",
+        "description": "Minimalistic C client for Redis"
+    },
+    "httplib": {
+        "url": "https://github.com/yhirose/cpp-httplib.git",
+        "description": "A C++11 single-file header-only cross platform HTTP/HTTPS library"
+    },
+    "hyperscan": {
+        "url": "https://github.com/intel/hyperscan.git",
+        "description": "High-performance regular expression matching library"
+    },
+    "icu": {
+        "url": "https://github.com/unicode-org/icu.git",
+        "description": "International Components for Unicode"
+    },
+    "imgui": {
+        "url": "https://github.com/ocornut/imgui.git",
+        "description": "Dear ImGui: Bloat-free Immediate Mode Graphical User interface for C++ with minimal dependencies"
+    },
+    "imgui-node-editor": {
+        "url": "https://github.com/thedmd/imgui-node-editor.git",
+        "description": "Node Editor built using Dear ImGui"
+    },
+    "imgui-sfml": {
+        "url": "https://github.com/SFML/imgui-sfml.git",
+        "description": "ImGui binding for use with SFML"
+    },
+    "imguizmo": {
+        "url": "https://github.com/GuillaumeGomez/ImGuizmo.git",
+        "description": "Immediate mode 3D gizmo for scene editing and other controls based on Dear ImGui"
+    },
+    "immer": {
+        "url": "https://github.com/arximboldi/immer.git",
+        "description": "Postmodern immutable and persistent data structures for C++"
+    },
+    "implot": {
+        "url": "https://github.com/epezent/implot.git",
+        "description": "Advanced 2D Plotting for Dear ImGui"
+    },
+    "indicators": {
+        "url": "https://github.com/p-ranav/indicators.git",
+        "description": "Activity Indicators for Modern C++"
+    },
+    "inih": {
+        "url": "https://github.com/benhoyt/inih.git",
+        "description": "Simple .INI file parser in C"
+    },
+    "inja": {
+        "url": "https://github.com/pantor/inja.git",
+        "description": "A Template Engine for Modern C++"
+    },
+    "itk": {
+        "url": "https://github.com/InsightSoftwareConsortium/ITK.git",
+        "description": "Insight Toolkit (ITK)"
+    },
+    "ixwebsocket": {
+        "url": "https://github.com/machinezone/IXWebSocket.git",
+        "description": "IXWebSocket"
+    },
+    "jemalloc": {
+        "url": "https://github.com/jemalloc/jemalloc.git",
+        "description": "A general purpose malloc(3) implementation"
+    },
+    "joltphysics": {
+        "url": "https://github.com/jrouwe/JoltPhysics.git",
+        "description": "A multi core friendly rigid body physics and collision detection library"
+    },
+    "json": {
+        "url": "https://github.com/nlohmann/json.git",
+        "description": "JSON for Modern C++"
+    },
+    "jsoncpp": {
+        "url": "https://github.com/open-source-parsers/jsoncpp.git",
+        "description": "A C++ library for interacting with JSON"
+    },
+    "jwt-cpp": {
+        "url": "https://github.com/Thalhammer/jwt-cpp.git",
+        "description": "A header only library for creating and validating json web tokens in C++"
+    },
+    "karchive": {
+        "url": "https://github.com/KDE/karchive.git",
+        "description": "Qt 5 addon providing access to numerous archive formats"
+    },
+    "kplot": {
+        "url": "https://github.com/kristapsdz/kplot.git",
+        "description": "Cairo plotting library"
+    },
+    "ktx-software": {
+        "url": "https://github.com/KhronosGroup/KTX-Software.git",
+        "description": "KTX (Khronos Texture) Library and Tools"
+    },
+    "leptonica": {
+        "url": "https://github.com/DanBloomberg/leptonica.git",
+        "description": "Leptonica"
+    },
+    "leveldb": {
+        "url": "https://github.com/google/leveldb.git",
+        "description": "A fast key-value storage library written at Google"
+    },
+    "lexy": {
+        "url": "https://github.com/foonathan/lexy.git",
+        "description": "A parser combinator library for C++17"
+    },
+    "libarchive": {
+        "url": "https://github.com/libarchive/libarchive.git",
+        "description": "Multi-format archive and compression library"
+    },
+    "libconfig": {
+        "url": "https://github.com/hyperrealm/libconfig.git",
+        "description": "C/C++ Configuration File Library"
+    },
+    "libdatachannel": {
+        "url": "https://github.com/paullouisageneau/libdatachannel.git",
+        "description": "C++17 WebSocket and WebRTC library"
+    },
+    "libev": {
+        "url": "https://github.com/enki/libev.git",
+        "description": "A full-featured and high-performance event loop"
+    },
+    "libevent": {
+        "url": "https://github.com/libevent/libevent.git",
+        "description": "Event notification library"
+    },
+    "libffi": {
+        "url": "https://github.com/libffi/libffi.git",
+        "description": "A portable foreign-function interface library"
+    },
+    "libgit2": {
+        "url": "https://github.com/libgit2/libgit2.git",
+        "description": "A cross-platform, linkable library implementation of Git"
+    },
+    "libharu": {
+        "url": "https://github.com/libharu/libharu.git",
+        "description": "Free PDF Library"
+    },
+    "libhv": {
+        "url": "https://github.com/ithewei/libhv.git",
+        "description": "Like libevent/libuv/asio, but lighter and easier"
+    },
+    "libigl": {
+        "url": "https://github.com/libigl/libigl.git",
+        "description": "Simple C++ geometry processing library"
+    },
+    "libjpeg-turbo": {
+        "url": "https://github.com/libjpeg-turbo/libjpeg-turbo.git",
+        "description": "A SIMD-accelerated JPEG codec"
+    },
+    "libmorton": {
+        "url": "https://github.com/Forceflow/libmorton.git",
+        "description": "C++ header-only library for Morton codes"
+    },
+    "libpng": {
+        "url": "https://github.com/glennrp/libpng.git",
+        "description": "Official PNG reference library"
+    },
+    "libpqxx": {
+        "url": "https://github.com/jtv/libpqxx.git",
+        "description": "The official C++ client API for PostgreSQL"
+    },
+    "librdkafka": {
+        "url": "https://github.com/edenhill/librdkafka.git",
+        "description": "The Apache Kafka C/C++ library"
+    },
+    "libsamplerate": {
+        "url": "https://github.com/libsndfile/libsamplerate.git",
+        "description": "Sample Rate Converter for audio"
+    },
+    "libserialport": {
+        "url": "https://github.com/sigrokproject/libserialport.git",
+        "description": "Cross-platform serial port library"
+    },
+    "libsndfile": {
+        "url": "https://github.com/libsndfile/libsndfile.git",
+        "description": "A C library for reading and writing tilled audio files"
+    },
+    "libsodium": {
+        "url": "https://github.com/jedisct1/libsodium.git",
+        "description": "A modern, easy-to-use crypto library"
+    },
+    "libssh": {
+        "url": "https://github.com/libssh/libssh-mirror.git",
+        "description": "The SSH library"
+    },
+    "libssh2": {
+        "url": "https://github.com/libssh2/libssh2.git",
+        "description": "SSH2 library"
+    },
+    "libtiff": {
+        "url": "https://github.com/tiffsoft/libtiff.git",
+        "description": "TIFF Library and Utilities"
+    },
+    "libui": {
+        "url": "https://github.com/andlabs/libui.git",
+        "description": "Simple and portable (but not flexible) GUI library in C"
+    },
+    "liburing": {
+        "url": "https://github.com/axboe/liburing.git",
+        "description": "io_uring library"
+    },
+    "libusb": {
+        "url": "https://github.com/libusb/libusb.git",
+        "description": "A cross-platform library to access USB devices"
+    },
+    "libuv": {
+        "url": "https://github.com/libuv/libuv.git",
+        "description": "Cross-platform asynchronous I/O"
+    },
+    "libvpx": {
+        "url": "https://github.com/webmproject/libvpx.git",
+        "description": "WebM VP8/VP9 Codec SDK"
+    },
+    "libwebp": {
+        "url": "https://github.com/webmproject/libwebp.git",
+        "description": "WebP codec library"
+    },
+    "libwebsockets": {
+        "url": "https://github.com/warmcat/libwebsockets.git",
+        "description": "C library for websockets"
+    },
+    "libxml2": {
+        "url": "https://github.com/GNOME/libxml2.git",
+        "description": "XML parser and toolkit"
+    },
+    "libzmq": {
+        "url": "https://github.com/zeromq/libzmq.git",
+        "description": "ZeroMQ core engine in C++"
+    },
+    "lodepng": {
+        "url": "https://github.com/lvandeve/lodepng.git",
+        "description": "PNG encoder and decoder in C and C++"
+    },
+    "log4cplus": {
+        "url": "https://github.com/log4cplus/log4cplus.git",
+        "description": "A simple to use C++ logging API"
+    },
+    "lua": {
+        "url": "https://github.com/lua/lua.git",
+        "description": "Lua programming language"
+    },
+    "luajit": {
+        "url": "https://github.com/LuaJIT/LuaJIT.git",
+        "description": "Just-In-Time Compiler for Lua"
+    },
+    "lz4": {
+        "url": "https://github.com/lz4/lz4.git",
+        "description": "Extremely Fast Compression algorithm"
+    },
+    "magic_enum": {
+        "url": "https://github.com/Neargye/magic_enum.git",
+        "description": "Static reflection for enums (to string, from string, iteration) for modern C++"
+    },
+    "magnum": {
+        "url": "https://github.com/mosra/magnum.git",
+        "description": "Lightweight and modular C++11/14 graphics middleware for games and data visualization"
+    },
+    "mariadb-connector-c": {
+        "url": "https://github.com/mariadb-corporation/mariadb-connector-c.git",
+        "description": "MariaDB Connector/C"
+    },
+    "matplotplusplus": {
+        "url": "https://github.com/alandefreitas/matplotplusplus.git",
+        "description": "A C++ Graphics Library for Data Visualization"
+    },
+    "mbedtls": {
+        "url": "https://github.com/Mbed-TLS/mbedtls.git",
+        "description": "Mbed TLS"
+    },
+    "meshlib": {
+        "url": "https://github.com/MeshLib/MeshLib.git",
+        "description": "A C++ library for processing 3D meshes"
+    },
+    "meshoptimizer": {
+        "url": "https://github.com/zeux/meshoptimizer.git",
+        "description": "Mesh optimization library that makes meshes smaller and faster to render"
+    },
+    "micro-ecc": {
+        "url": "https://github.com/kmackay/micro-ecc.git",
+        "description": "A small and fast ECDH and ECDSA implementation for 8-bit, 32-bit, and 64-bit processors"
+    },
+    "mimalloc": {
+        "url": "https://github.com/microsoft/mimalloc.git",
+        "description": "mimalloc is a compact general purpose allocator with excellent performance"
+    },
+    "miniaudio": {
+        "url": "https://github.com/mackron/miniaudio.git",
+        "description": "Audio playback and capture library"
+    },
+    "miniz": {
+        "url": "https://github.com/richgel999/miniz.git",
+        "description": "Single C source file Deflate/Inflate compression library"
+    },
+    "minizip-ng": {
+        "url": "https://github.com/zlib-ng/minizip-ng.git",
+        "description": "Fork of the popular minizip found in the zlib distribution"
+    },
+    "mlpack": {
+        "url": "https://github.com/mlpack/mlpack.git",
+        "description": "A scalable C++ machine learning library"
+    },
+    "mnn": {
+        "url": "https://github.com/alibaba/MNN.git",
+        "description": "MNN is a highly efficient and lightweight deep learning framework"
+    },
+    "mongo-c-driver": {
+        "url": "https://github.com/mongodb/mongo-c-driver.git",
+        "description": "MongoDB C Driver"
+    },
+    "mongo-cxx-driver": {
+        "url": "https://github.com/mongodb/mongo-cxx-driver.git",
+        "description": "MongoDB C++ Driver"
+    },
+    "mongoose": {
+        "url": "https://github.com/cesanta/mongoose.git",
+        "description": "Embedded Web Server"
+    },
+    "mosquitto": {
+        "url": "https://github.com/eclipse/mosquitto.git",
+        "description": "Eclipse Mosquitto - An open source MQTT broker"
+    },
+    "mp-units": {
+        "url": "https://github.com/mpusz/mp-units.git",
+        "description": "The Units Library for C++"
+    },
+    "msgpack-c": {
+        "url": "https://github.com/msgpack/msgpack-c.git",
+        "description": "MessagePack implementation for C and C++"
+    },
+    "nameof": {
+        "url": "https://github.com/Neargye/nameof.git",
+        "description": "Header-only C++17 library provides nameof macros and functions"
+    },
+    "nanobench": {
+        "url": "https://github.com/martinus/nanobench.git",
+        "description": "Simple, robust, fast, accurate, standard-compliant, self-contained, header-only benchmarking"
+    },
+    "nanodbc": {
+        "url": "https://github.com/nanodbc/nanodbc.git",
+        "description": "A small C++ wrapper for the native C ODBC API"
+    },
+    "nanoflann": {
+        "url": "https://github.com/jlblancoc/nanoflann.git",
+        "description": "Header-only C++ library for KD-trees"
+    },
+    "nanovg": {
+        "url": "https://github.com/memononen/nanovg.git",
+        "description": "Antialiased 2D vector drawing library on top of OpenGL for UI and visualizations"
+    },
+    "ncnn": {
+        "url": "https://github.com/Tencent/ncnn.git",
+        "description": "ncnn is a high-performance neural network inference framework optimized for the mobile platform"
+    },
+    "ncurses": {
+        "url": "https://github.com/mirror/ncurses.git",
+        "description": "CRT screen handling and optimization package"
+    },
+    "nghttp2": {
+        "url": "https://github.com/nghttp2/nghttp2.git",
+        "description": "nghttp2 - HTTP/2 C Library"
+    },
+    "nng": {
+        "url": "https://github.com/nanomsg/nng.git",
+        "description": "nanomsg-next-generation: light-weight messaging"
+    },
+    "nuklear": {
+        "url": "https://github.com/Immediate-Mode-UI/Nuklear.git",
+        "description": "A single-header ANSI C immediate mode cross-platform GUI library"
+    },
+    "oatpp": {
+        "url": "https://github.com/oatpp/oatpp.git",
+        "description": "Light, Zero-Dependency, High-Performance Web Framework"
+    },
+    "ode": {
+        "url": "https://github.com/opende/ode.git",
+        "description": "Open Dynamics Engine"
+    },
+    "ogre": {
+        "url": "https://github.com/OGRECave/ogre.git",
+        "description": "Scene-oriented, flexible 3D engine"
+    },
+    "onedpl": {
+        "url": "https://github.com/oneapi-src/oneDPL.git",
+        "description": "oneAPI DPC++ Library"
+    },
+    "oniguruma": {
+        "url": "https://github.com/kkos/oniguruma.git",
+        "description": "regular expression library"
+    },
+    "onnxruntime": {
+        "url": "https://github.com/microsoft/onnxruntime.git",
+        "description": "ONNX Runtime: cross-platform, high performance ML inferencing and training accelerator"
+    },
+    "open3d": {
+        "url": "https://github.com/isl-org/Open3D.git",
+        "description": "A Modern Library for 3D Data Processing"
+    },
+    "openal-soft": {
+        "url": "https://github.com/kcat/openal-soft.git",
+        "description": "Software implementation of the OpenAL 3D audio API"
+    },
+    "opencl-headers": {
+        "url": "https://github.com/KhronosGroup/OpenCL-Headers.git",
+        "description": "Khronos OpenCL-Headers"
+    },
+    "opencv": {
+        "url": "https://github.com/opencv/opencv.git",
+        "description": "Open Source Computer Vision Library"
+    },
+    "openexr": {
+        "url": "https://github.com/AcademySoftwareFoundation/openexr.git",
+        "description": "The OpenEXR format"
+    },
+    "opengl-registry": {
+        "url": "https://github.com/KhronosGroup/OpenGL-Registry.git",
+        "description": "OpenGL XML API Registry"
+    },
+    "openimageio": {
+        "url": "https://github.com/OpenImageIO/oiio.git",
+        "description": "A library for reading and writing images"
+    },
+    "openmesh": {
+        "url": "https://github.com/OpenMesh/OpenMesh.git",
+        "description": "A generic and efficient polygon mesh data structure"
+    },
+    "openmp": {
+        "url": "https://github.com/llvm/llvm-project.git",
+        "description": "The OpenMP API specification for parallel programming"
+    },
+    "openssl": {
+        "url": "https://github.com/openssl/openssl.git",
+        "description": "TLS/SSL and crypto library"
+    },
+    "opensubdiv": {
+        "url": "https://github.com/PixarAnimationStudios/OpenSubdiv.git",
+        "description": "High performance subdivision surface (subdiv) library"
+    },
+    "openvdb": {
+        "url": "https://github.com/AcademySoftwareFoundation/openvdb.git",
+        "description": "OpenVDB - Sparse Volume Data Structure and Tools"
+    },
+    "ozz-animation": {
+        "url": "https://github.com/guillaumeblanc/ozz-animation.git",
+        "description": "Open source C++ skeletal animation library and toolchain"
+    },
+    "paho.mqtt.cpp": {
+        "url": "https://github.com/eclipse/paho.mqtt.cpp.git",
+        "description": "Eclipse Paho MQTT C++ Client Library"
+    },
+    "parallel-hashmap": {
+        "url": "https://github.com/greg7mdp/parallel-hashmap.git",
+        "description": "A family of header-only, very fast and memory-friendly hashmap and btree containers for C++"
+    },
+    "pcl": {
+        "url": "https://github.com/PointCloudLibrary/pcl.git",
+        "description": "Point Cloud Library (PCL)"
+    },
+    "pcre2": {
+        "url": "https://github.com/PCRE2Project/pcre2.git",
+        "description": "PCRE2 - Perl Compatible Regular Expressions"
+    },
+    "pdcurses": {
+        "url": "https://github.com/wmcbrine/PDCurses.git",
+        "description": "Public Domain Curses"
+    },
+    "pegtl": {
+        "url": "https://github.com/taocpp/PEGTL.git",
+        "description": "Parsing Expression Grammar Template Library"
+    },
+    "physfs": {
+        "url": "https://github.com/icculus/physfs.git",
+        "description": "PhysicsFS"
+    },
+    "physx": {
+        "url": "https://github.com/NVIDIAGameWorks/PhysX.git",
+        "description": "NVIDIA PhysX SDK"
+    },
+    "picbench": {
+        "url": "https://github.com/bo-se/picbench.git",
+        "description": "PIC Benchmark"
+    },
+    "picojson": {
+        "url": "https://github.com/kazuho/picojson.git",
+        "description": "A header-only, C++ JSON parser/serializer"
+    },
+    "pigpio": {
+        "url": "https://github.com/joan2937/pigpio.git",
+        "description": "pigpio is a C library for the Raspberry Pi which allows control of the General Purpose Input Outputs (GPIO)"
+    },
+    "pistache": {
+        "url": "https://github.com/pistacheio/pistache.git",
+        "description": "A high-performance REST Toolkit for C++"
+    },
+    "plog": {
+        "url": "https://github.com/SergiusTheBest/plog.git",
+        "description": "Portable, simple and extensible C++ logging library"
+    },
+    "pocketfft": {
+        "url": "https://github.com/mreineck/pocketfft.git",
+        "description": "A heavily modified implementation of FFTPACK"
+    },
+    "poco": {
+        "url": "https://github.com/pocoproject/poco.git",
+        "description": "POCO C++ Libraries"
+    },
+    "portaudio": {
+        "url": "https://github.com/PortAudio/portaudio.git",
+        "description": "PortAudio is a free, cross-platform, open-source, audio I/O library"
+    },
+    "portmidi": {
+        "url": "https://github.com/PortMidi/portmidi.git",
+        "description": "Platform Independent library for MIDI I/O"
+    },
+    "prometheus-cpp": {
+        "url": "https://github.com/jupp0r/prometheus-cpp.git",
+        "description": "Prometheus Client Library for C++"
+    },
+    "protobuf": {
+        "url": "https://github.com/protocolbuffers/protobuf.git",
+        "description": "Protocol Buffers - Google's data interchange format"
+    },
+    "pugixml": {
+        "url": "https://github.com/zeux/pugixml.git",
+        "description": "Light-weight, simple and fast XML parser for C++ with XPath support"
+    },
+    "pybind11": {
+        "url": "https://github.com/pybind/pybind11.git",
+        "description": "Seamless operability between C++11 and Python"
+    },
+    "qhull": {
+        "url": "https://github.com/qhull/qhull.git",
+        "description": "Qhull computes the convex hull"
+    },
+    "quill": {
+        "url": "https://github.com/odygrd/quill.git",
+        "description": "Asynchronous Low Latency C++ Logging Library"
+    },
+    "rang": {
+        "url": "https://github.com/agauniyal/rang.git",
+        "description": "A minimalistic, cross-platform and modern terminal styling library"
+    },
+    "range-v3": {
+        "url": "https://github.com/ericniebler/range-v3.git",
+        "description": "Experimental range library for C++11/14/17"
+    },
+    "rapidcheck": {
+        "url": "https://github.com/emil-e/rapidcheck.git",
+        "description": "QuickCheck clone for C++"
+    },
+    "rapidjson": {
+        "url": "https://github.com/Tencent/rapidjson.git",
+        "description": "A fast JSON parser/generator for C++ with both SAX/DOM style API"
+    },
+    "rapidxml": {
+        "url": "https://github.com/feiling/rapidxml.git",
+        "description": "RapidXml is an attempt to create the fastest XML parser possible"
+    },
+    "raylib": {
+        "url": "https://github.com/raysan5/raylib.git",
+        "description": "A simple and easy-to-use library to enjoy videogames programming"
+    },
+    "re2": {
+        "url": "https://github.com/google/re2.git",
+        "description": "RE2 is a fast, safe, thread-friendly alternative to backtracking regular expression engines like those used in PCRE, Perl, and Python"
+    },
+    "reactphysics3d": {
+        "url": "https://github.com/DanielChappuis/reactphysics3d.git",
+        "description": "Open source C++ physics engine library found in games"
+    },
+    "recastnavigation": {
+        "url": "https://github.com/recastnavigation/recastnavigation.git",
+        "description": "Navigation-mesh Toolset for Games"
+    },
+    "redis-plus-plus": {
+        "url": "https://github.com/sewenew/redis-plus-plus.git",
+        "description": "Redis client for C++"
+    },
+    "renderdoc": {
+        "url": "https://github.com/baldurk/renderdoc.git",
+        "description": "RenderDoc is a stand-alone graphics debugger"
+    },
+    "restbed": {
+        "url": "https://github.com/Corvusoft/restbed.git",
+        "description": "Corvusoft's Restbed framework"
+    },
+    "robin-map": {
+        "url": "https://github.com/Tessil/robin-map.git",
+        "description": "A C++ implementation of a fast hash map and hash set using robin hood hashing"
+    },
+    "rocksdb": {
+        "url": "https://github.com/facebook/rocksdb.git",
+        "description": "A library that provides an embeddable, persistent key-value store for fast storage"
+    },
+    "rtaudio": {
+        "url": "https://github.com/thetarnav/rtaudio.git",
+        "description": "A set of C++ classes that provide a common API for realtime audio input/output"
+    },
+    "rtmidi": {
+        "url": "https://github.com/thetarnav/rtmidi.git",
+        "description": "A set of C++ classes that provide a common API for realtime MIDI input/output"
+    },
+    "sajson": {
+        "url": "https://github.com/chadaustin/sajson.git",
+        "description": "Lightweight, extremely high-performance JSON parser for C++11"
+    },
+    "scnlib": {
+        "url": "https://github.com/eliaskosunen/scnlib.git",
+        "description": "Reference implementation of scn::scan / std::scan (P1729)"
+    },
+    "sdl2": {
+        "url": "https://github.com/libsdl-org/SDL.git",
+        "description": "Simple DirectMedia Layer"
+    },
+    "sdl2-image": {
+        "url": "https://github.com/libsdl-org/SDL_image.git",
+        "description": "Image loading library for SDL2"
+    },
+    "sdl2-mixer": {
+        "url": "https://github.com/libsdl-org/SDL_mixer.git",
+        "description": "Audio mixer library for SDL2"
+    },
+    "sdl2-net": {
+        "url": "https://github.com/libsdl-org/SDL_net.git",
+        "description": "Network library for SDL2"
+    },
+    "sdl2-ttf": {
+        "url": "https://github.com/libsdl-org/SDL_ttf.git",
+        "description": "TrueType font library for SDL2"
+    },
+    "serial": {
+        "url": "https://github.com/wjwwood/serial.git",
+        "description": "Cross-platform, Serial Port library written in C++"
+    },
+    "sfml": {
+        "url": "https://github.com/SFML/SFML.git",
+        "description": "Simple and Fast Multimedia Library"
+    },
+    "shaderc": {
+        "url": "https://github.com/google/shaderc.git",
+        "description": "A collection of tools, libraries, and tests for shader compilation"
+    },
+    "simde": {
+        "url": "https://github.com/simd-everywhere/simde.git",
+        "description": "Implementations of SIMD instruction sets for systems which don't natively support them"
+    },
+    "simdjson": {
+        "url": "https://github.com/simdjson/simdjson.git",
+        "description": "Parsing gigabytes of JSON per second"
+    },
+    "simple-web-server": {
+        "url": "https://github.com/eidheim/Simple-Web-Server.git",
+        "description": "A very simple, fast, multithreaded, platform independent HTTP and HTTPS server and client library"
+    },
+    "skia": {
+        "url": "https://github.com/google/skia.git",
+        "description": "2D graphics library"
+    },
+    "snappy": {
+        "url": "https://github.com/google/snappy.git",
+        "description": "A fast compressor/decompressor"
+    },
+    "sod": {
+        "url": "https://github.com/symisc/sod.git",
+        "description": "Computer Vision Library"
+    },
+    "sodium": {
+        "url": "https://github.com/jedisct1/libsodium.git",
+        "description": "A modern, easy-to-use crypto library"
+    },
+    "sol2": {
+        "url": "https://github.com/ThePhD/sol2.git",
+        "description": "Sol2 (sol v2.0) - a C++ library binding to Lua"
+    },
+    "soloud": {
+        "url": "https://github.com/jarikomppa/soloud.git",
+        "description": "Free, easy, portable audio engine for games"
+    },
+    "spdk": {
+        "url": "https://github.com/spdk/spdk.git",
+        "description": "Storage Performance Development Kit"
+    },
+    "spdlog": {
+        "url": "https://github.com/gabime/spdlog.git",
+        "description": "Fast C++ logging library"
+    },
+    "spirv-cross": {
+        "url": "https://github.com/KhronosGroup/SPIRV-Cross.git",
+        "description": "SPIRV-Cross"
+    },
+    "sqlite": {
+        "url": "https://github.com/sqlite/sqlite.git",
+        "description": "SQLite"
+    },
+    "sqlite_orm": {
+        "url": "https://github.com/fnc12/sqlite_orm.git",
+        "description": "SQLite ORM light header only library for modern C++"
+    },
+    "stb": {
+        "url": "https://github.com/nothings/stb.git",
+        "description": "stb single-file public domain libraries"
+    },
+    "struct_pack": {
+        "url": "https://github.com/alibaba/struct_pack.git",
+        "description": "A high performance serialization library"
+    },
+    "tabulate": {
+        "url": "https://github.com/p-ranav/tabulate.git",
+        "description": "Table Maker for Modern C++"
+    },
+    "taskflow": {
+        "url": "https://github.com/taskflow/taskflow.git",
+        "description": "Modern C++ Parallel Task Programming"
+    },
+    "tbb": {
+        "url": "https://github.com/oneapi-src/oneTBB.git",
+        "description": "oneAPI Threading Building Blocks"
+    },
+    "tensorflow": {
+        "url": "https://github.com/tensorflow/tensorflow.git",
+        "description": "Computation using data flow graphs for scalable machine learning"
+    },
+    "tesseract": {
+        "url": "https://github.com/tesseract-ocr/tesseract.git",
+        "description": "Tesseract OCR"
+    },
+    "thrift": {
+        "url": "https://github.com/apache/thrift.git",
+        "description": "Apache Thrift"
+    },
+    "tiny-dnn": {
+        "url": "https://github.com/tiny-dnn/tiny-dnn.git",
+        "description": "header only, dependency-free deep learning framework in C++14"
+    },
+    "tinygltf": {
+        "url": "https://github.com/syoyo/tinygltf.git",
+        "description": "Header only C++11 tiny glTF 2.0 file loader and saver"
+    },
+    "tinyobjloader": {
+        "url": "https://github.com/tinyobjloader/tinyobjloader.git",
+        "description": "Tiny but powerful single file wavefront obj loader"
+    },
+    "tinyply": {
+        "url": "https://github.com/ddiakopoulos/tinyply.git",
+        "description": "C++11 library for loading and saving PLY files"
+    },
+    "tinyxml2": {
+        "url": "https://github.com/leethomason/tinyxml2.git",
+        "description": "TinyXML-2 is a simple, small, efficient, C++ XML parser"
+    },
+    "tomlplusplus": {
+        "url": "https://github.com/marzer/tomlplusplus.git",
+        "description": "Header-only TOML config file parser and serializer for C++17"
+    },
+    "tracy": {
+        "url": "https://github.com/wolfpld/tracy.git",
+        "description": "C++ frame profiler"
+    },
+    "trompeloeil": {
+        "url": "https://github.com/rollbear/trompeloeil.git",
+        "description": "Header only C++14 mocking framework"
+    },
+    "unialgo": {
+        "url": "https://github.com/uni-algo/uni-algo.git",
+        "description": "Unicode Algorithms Implementation for C/C++"
+    },
+    "unity-test": {
+        "url": "https://github.com/ThrowTheSwitch/Unity.git",
+        "description": "Simple Unit Testing for C"
+    },
+    "unqlite": {
+        "url": "https://github.com/symisc/unqlite.git",
+        "description": "An Embeddable NoSQL Database Engine"
+    },
+    "uriparser": {
+        "url": "https://github.com/uriparser/uriparser.git",
+        "description": "Strictly RFC 3986 compliant URI parsing and handling library"
+    },
+    "utfcpp": {
+        "url": "https://github.com/nemtrif/utfcpp.git",
+        "description": "UTF-8 with C++ in a Portable Way"
+    },
+    "uwebsockets": {
+        "url": "https://github.com/uNetworking/uWebSockets.git",
+        "description": "Simple, secure & standards compliant web server for the most demanding of applications"
+    },
+    "valijson": {
+        "url": "https://github.com/tristanpenman/valijson.git",
+        "description": "Valijson is a header-only JSON Schema Validation library for C++11"
+    },
+    "vc": {
+        "url": "https://github.com/VcDevel/Vc.git",
+        "description": "SIMD Vector Classes for C++"
+    },
+    "verilator": {
+        "url": "https://github.com/verilator/verilator.git",
+        "description": "Verilog simulator"
+    },
+    "vtk": {
+        "url": "https://github.com/Kitware/VTK.git",
+        "description": "The Visualization Toolkit (VTK)"
+    },
+    "vulkan-headers": {
+        "url": "https://github.com/KhronosGroup/Vulkan-Headers.git",
+        "description": "Vulkan Header files"
+    },
+    "vulkan-memory-allocator": {
+        "url": "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git",
+        "description": "Easy to integrate Vulkan memory allocation library"
+    },
+    "websocketpp": {
+        "url": "https://github.com/zaphoyd/websocketpp.git",
+        "description": "C++ websocket client/server library"
+    },
+    "wolfssl": {
+        "url": "https://github.com/wolfSSL/wolfssl.git",
+        "description": "wolfSSL (formerly CyaSSL) is a small, fast, portable implementation of TLS/SSL"
+    },
+    "wren": {
+        "url": "https://github.com/wren-lang/wren.git",
+        "description": "The Wren Programming Language"
+    },
+    "wt": {
+        "url": "https://github.com/emweb/wt.git",
+        "description": "C++ Web Toolkit"
+    },
+    "wxwidgets": {
+        "url": "https://github.com/wxWidgets/wxWidgets.git",
+        "description": "Cross-Platform C++ GUI Library"
+    },
+    "xbyak": {
+        "url": "https://github.com/herumi/xbyak.git",
+        "description": "JIT assembler for x86(IA32), x64(AMD64, x86-64) MMX/SSE/AVX/AVX-512"
+    },
+    "xcb": {
+        "url": "https://gitlab.freedesktop.org/xorg/lib/libxcb.git",
+        "description": "X C binding"
+    },
+    "xsimd": {
+        "url": "https://github.com/xtensor-stack/xsimd.git",
+        "description": "C++ wrappers for SIMD intrinsics"
+    },
+    "xtensor": {
+        "url": "https://github.com/xtensor-stack/xtensor.git",
+        "description": "Multi-dimensional arrays with broadcasting and lazy computing"
+    },
+    "xxhash": {
+        "url": "https://github.com/Cyan4973/xxHash.git",
+        "description": "Extremely fast Hash algorithm"
+    },
+    "yaml-cpp": {
+        "url": "https://github.com/jbeder/yaml-cpp.git",
+        "description": "A YAML parser and emitter in C++"
+    },
+    "yas": {
+        "url": "https://github.com/niXman/yas.git",
+        "description": "Yet Another Serialization"
+    },
+    "yojimbo": {
+        "url": "https://github.com/networkprotocol/yojimbo.git",
+        "description": "A network library for client/server games"
+    },
+    "yosys": {
+        "url": "https://github.com/YosysHQ/yosys.git",
+        "description": "Yosys Open SYnthesis Suite"
+    },
+    "yyjson": {
+        "url": "https://github.com/ibireme/yyjson.git",
+        "description": "A high performance JSON library written in ANSI C"
+    },
+    "zeromq": {
+        "url": "https://github.com/zeromq/libzmq.git",
+        "description": "ZeroMQ core engine in C++"
+    },
+    "zlib": {
+        "url": "https://github.com/madler/zlib.git",
+        "description": "A massively spiffy yet delicately unobtrusive compression library"
+    },
+    "zlib-ng": {
+        "url": "https://github.com/zlib-ng/zlib-ng.git",
+        "description": "zlib replacement with optimizations for next generation systems"
+    },
+    "zstd": {
+        "url": "https://github.com/facebook/zstd.git",
+        "description": "Zstandard - Fast real-time compression algorithm"
+    },
+    "zydis": {
+        "url": "https://github.com/zyantific/zydis.git",
+        "description": "Fast and lightweight x86/x86-64 disassembler library"
+    }
 }

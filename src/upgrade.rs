@@ -20,8 +20,6 @@ struct Asset {
     browser_download_url: String,
 }
 
-use std::time::Duration;
-
 pub fn check_and_upgrade() -> Result<()> {
     println!("{} Checking for updates...", "🔍".blue());
 
@@ -31,13 +29,12 @@ pub fn check_and_upgrade() -> Result<()> {
         REPO_OWNER, REPO_NAME
     );
 
-    let resp = ureq::get(&url)
-        .set("User-Agent", "caxe-updater")
-        .timeout(Duration::from_secs(10))
+    let mut resp = ureq::get(&url)
+        .header("User-Agent", "caxe-updater")
         .call()
         .context("Failed to check for updates")?;
 
-    let release: Release = resp.into_json()?;
+    let release: Release = resp.body_mut().read_json()?;
 
     // Clean tag name (remove 'v' prefix if present)
     let tag_clean = release.tag_name.trim_start_matches('v');
@@ -73,13 +70,15 @@ pub fn check_and_upgrade() -> Result<()> {
         .context("No compatible binary found for this OS")?;
 
     // Download
-    let agent = ureq::get(&asset.browser_download_url)
-        .set("User-Agent", "caxe-updater")
+    let mut agent = ureq::get(&asset.browser_download_url)
+        .header("User-Agent", "caxe-updater")
         .call()
         .context("Failed to download update")?;
 
     let total_size = agent
-        .header("content-length")
+        .headers()
+        .get("content-length")
+        .and_then(|h| h.to_str().ok())
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(0);
 
@@ -92,7 +91,7 @@ pub fn check_and_upgrade() -> Result<()> {
     );
     pb.set_message("Downloading...");
 
-    let mut reader = agent.into_reader();
+    let mut reader = agent.body_mut().as_reader();
     let current_exe = env::current_exe()?;
     let tmp_exe = current_exe.with_extension("tmp");
     let mut tmp_file = fs::File::create(&tmp_exe)?;

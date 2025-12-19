@@ -76,9 +76,9 @@ pub fn get_or_detect_toolchain(
     let cache_path = get_toolchain_cache_path();
 
     // Try to load from cache first
-    if !force_detect && cache_path.exists() {
-        if let Ok(contents) = std::fs::read_to_string(&cache_path) {
-            if let Ok(cached) = toml::from_str::<Toolchain>(&contents) {
+    if !force_detect && cache_path.exists()
+        && let Ok(contents) = std::fs::read_to_string(&cache_path)
+            && let Ok(cached) = toml::from_str::<Toolchain>(&contents) {
                 // Verify the cached toolchain still exists AND matches preference
                 if cached.cxx_path.exists() {
                     // If user has a preference, cache must match it
@@ -92,8 +92,6 @@ pub fn get_or_detect_toolchain(
                     }
                 }
             }
-        }
-    }
 
     // Detect fresh toolchain
     let toolchain = detect_toolchain(preferred)?;

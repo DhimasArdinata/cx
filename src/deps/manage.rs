@@ -1,7 +1,7 @@
 use crate::config::Dependency;
 use anyhow::{Context, Result};
 use colored::*;
-use dirs;
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -28,7 +28,7 @@ pub fn add_dependency(
         // Case B: Direct URL
         let name = lib_input
             .split('/')
-            .last()
+            .next_back()
             .unwrap_or("unknown")
             .replace(".git", "");
         (name, lib_input.to_string())
@@ -75,7 +75,7 @@ pub fn add_dependency(
     // 4. Insert & Save
     if let Some(deps) = &mut config.dependencies {
         if deps.contains_key(&name) {
-            println!("{} Dependency '{}' updated.", "!", name);
+            println!("! Dependency '{}' updated.", name);
         }
         deps.insert(name.clone(), dep_entry);
     }
@@ -103,10 +103,10 @@ pub fn remove_dependency(name: &str) -> Result<()> {
     let mut config: crate::config::CxConfig = toml::from_str(&config_str)?;
 
     let mut found = false;
-    if let Some(deps) = &mut config.dependencies {
-        if deps.remove(name).is_some() {
-            found = true;
-        }
+    if let Some(deps) = &mut config.dependencies
+        && deps.remove(name).is_some()
+    {
+        found = true;
     }
 
     if found {
@@ -140,11 +140,11 @@ pub fn update_dependencies() -> Result<()> {
 
     if let Some(deps) = config.dependencies {
         for (name, dep_data) in deps {
-            let is_git = match dep_data {
-                crate::config::Dependency::Simple(_) => true,
-                crate::config::Dependency::Complex { git: Some(_), .. } => true,
-                _ => false,
-            };
+            let is_git = matches!(
+                dep_data,
+                crate::config::Dependency::Simple(_)
+                    | crate::config::Dependency::Complex { git: Some(_), .. }
+            );
 
             if is_git {
                 let lib_path = cache_dir.join(&name);
@@ -162,12 +162,12 @@ pub fn update_dependencies() -> Result<()> {
                         let command = "git fetch origin && git reset --hard origin/HEAD";
                         let status = if cfg!(target_os = "windows") {
                             Command::new("cmd")
-                                .args(&["/C", command])
+                                .args(["/C", command])
                                 .current_dir(&lib_path)
                                 .output()
                         } else {
                             Command::new("sh")
-                                .args(&["-c", command])
+                                .args(["-c", command])
                                 .current_dir(&lib_path)
                                 .output()
                         };

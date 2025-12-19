@@ -25,6 +25,17 @@ struct TraceEvent {
     tid: usize,
 }
 
+#[derive(Default, Clone)]
+pub struct BuildOptions {
+    pub release: bool,
+    pub verbose: bool,
+    pub dry_run: bool,
+    pub enable_profile: bool,
+    pub wasm: bool,
+    pub lto: bool,
+    pub sanitize: Option<String>,
+}
+
 // --- Helper: Check Dependencies (.d file) ---
 fn check_dependencies(obj_path: &Path, src_path: &Path) -> Result<bool> {
     let d_path = obj_path.with_extension("d");
@@ -63,16 +74,14 @@ fn check_dependencies(obj_path: &Path, src_path: &Path) -> Result<bool> {
 }
 
 // --- CORE: Build Project ---
-pub fn build_project(
-    config: &CxConfig,
-    release: bool,
-    verbose: bool,
-    dry_run: bool,
-    enable_profile: bool,
-    wasm: bool,
-    lto: bool,
-    sanitize: Option<String>,
-) -> Result<bool> {
+pub fn build_project(config: &CxConfig, options: &BuildOptions) -> Result<bool> {
+    let release = options.release;
+    let verbose = options.verbose;
+    let dry_run = options.dry_run;
+    let enable_profile = options.enable_profile;
+    let wasm = options.wasm;
+    let lto = options.lto;
+    let sanitize = options.sanitize.clone();
     let start_time = Instant::now();
     let current_dir = std::env::current_dir()?;
 
@@ -156,15 +165,15 @@ pub fn build_project(
     }
 
     // 1. Pre-build Script
-    if let Some(scripts) = &config.scripts {
-        if let Some(pre) = &scripts.pre_build {
-            if verbose {
-                println!("{} Running pre-build script: {}", "→".blue(), pre);
-            }
-            if let Err(e) = run_script(pre, &current_dir) {
-                println!("{} Pre-build script failed: {}", "x".red(), e);
-                return Ok(false);
-            }
+    if let Some(scripts) = &config.scripts
+        && let Some(pre) = &scripts.pre_build
+    {
+        if verbose {
+            println!("{} Running pre-build script: {}", "→".blue(), pre);
+        }
+        if let Err(e) = run_script(pre, &current_dir) {
+            println!("{} Pre-build script failed: {}", "x".red(), e);
+            return Ok(false);
         }
     }
 
@@ -202,13 +211,13 @@ pub fn build_project(
     let mut extra_cflags = Vec::new();
     let mut dep_libs = Vec::new();
 
-    if let Some(deps) = &config.dependencies {
-        if !deps.is_empty() {
-            let (paths, cflags, libs) = deps::fetch_dependencies(deps)?;
-            include_paths = paths;
-            extra_cflags = cflags;
-            dep_libs = libs;
-        }
+    if let Some(deps) = &config.dependencies
+        && !deps.is_empty()
+    {
+        let (paths, cflags, libs) = deps::fetch_dependencies(deps)?;
+        include_paths = paths;
+        extra_cflags = cflags;
+        dep_libs = libs;
     }
 
     // 4. Collect Source Files
@@ -369,29 +378,16 @@ pub fn build_project(
 
             let prefix = ccache_prefix.map(|c| format!("{} ", c)).unwrap_or_default();
 
-            let cmd = if is_msvc {
-                format!(
-                    "  → {}{} -c {} → {}",
-                    prefix,
-                    short_compiler,
-                    src_path.display(),
-                    obj_path
-                        .file_name()
-                        .unwrap_or(obj_path.as_os_str())
-                        .to_string_lossy()
-                )
-            } else {
-                format!(
-                    "  → {}{} -c {} → {}",
-                    prefix,
-                    short_compiler,
-                    src_path.display(),
-                    obj_path
-                        .file_name()
-                        .unwrap_or(obj_path.as_os_str())
-                        .to_string_lossy()
-                )
-            };
+            let cmd = format!(
+                "  → {}{} -c {} → {}",
+                prefix,
+                short_compiler,
+                src_path.display(),
+                obj_path
+                    .file_name()
+                    .unwrap_or(obj_path.as_os_str())
+                    .to_string_lossy()
+            );
             println!("{}", cmd.dimmed());
         }
 
@@ -421,108 +417,108 @@ pub fn build_project(
 
     // 5b. Precompiled Headers (PCH)
     let mut pch_args = Vec::new();
-    if let Some(build_cfg) = &config.build {
-        if let Some(pch_str) = &build_cfg.pch {
-            let pch_source = Path::new(pch_str);
-            if !pch_source.exists() {
-                println!("{} PCH file not found: {}", "!".yellow(), pch_str);
-            } else {
-                let pch_name = pch_source.file_name().unwrap().to_string_lossy();
+    if let Some(build_cfg) = &config.build
+        && let Some(pch_str) = &build_cfg.pch
+    {
+        let pch_source = Path::new(pch_str);
+        if !pch_source.exists() {
+            println!("{} PCH file not found: {}", "!".yellow(), pch_str);
+        } else {
+            let pch_name = pch_source.file_name().unwrap().to_string_lossy();
 
-                if is_msvc {
-                    let pch_out = obj_dir.join(format!("{}.pch", pch_name));
-                    // Check mtime
-                    let need_pch = !pch_out.exists()
-                        || pch_source
+            if is_msvc {
+                let pch_out = obj_dir.join(format!("{}.pch", pch_name));
+                // Check mtime
+                let need_pch = !pch_out.exists()
+                    || pch_source
+                        .metadata()
+                        .and_then(|m| m.modified())
+                        .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+                        > pch_out
                             .metadata()
                             .and_then(|m| m.modified())
-                            .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-                            > pch_out
-                                .metadata()
-                                .and_then(|m| m.modified())
-                                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
 
-                    if need_pch {
-                        println!("{} Compiling PCH (MSVC)...", "⚙".cyan());
-                        let mut cmd = Command::new(&compiler);
-                        cmd.args(&["/nologo", "/c", "/EHsc"]);
-                        cmd.arg("/Yc"); // Create PCH
-                        cmd.arg(format!("/Fp{}", pch_out.display()));
-                        cmd.arg(pch_source);
-                        // Add includes/defines
-                        cmd.args(&common_flags);
-                        cmd.arg(format!(
-                            "/Fo{}",
-                            obj_dir.join(format!("{}.obj", pch_name)).display()
+                if need_pch {
+                    println!("{} Compiling PCH (MSVC)...", "⚙".cyan());
+                    let mut cmd = Command::new(&compiler);
+                    cmd.args(["/nologo", "/c", "/EHsc"]);
+                    cmd.arg("/Yc"); // Create PCH
+                    cmd.arg(format!("/Fp{}", pch_out.display()));
+                    cmd.arg(pch_source);
+                    // Add includes/defines
+                    cmd.args(&common_flags);
+                    cmd.arg(format!(
+                        "/Fo{}",
+                        obj_dir.join(format!("{}.obj", pch_name)).display()
+                    ));
+
+                    // Envs
+                    if !toolchain_env.is_empty() {
+                        cmd.envs(&toolchain_env);
+                    }
+
+                    let out = cmd.output()?;
+                    if !out.status.success() {
+                        return Err(anyhow::anyhow!(
+                            "Failed to compile PCH: {}",
+                            String::from_utf8_lossy(&out.stderr)
                         ));
-
-                        // Envs
-                        if !toolchain_env.is_empty() {
-                            cmd.envs(&toolchain_env);
-                        }
-
-                        let out = cmd.output()?;
-                        if !out.status.success() {
-                            return Err(anyhow::anyhow!(
-                                "Failed to compile PCH: {}",
-                                String::from_utf8_lossy(&out.stderr)
-                            ));
-                        }
                     }
-                    // Use PCH flags for other files
-                    pch_args.push(format!("/Yu{}", pch_name));
-                    pch_args.push(format!("/Fp{}", pch_out.display()));
-
-                    // MSVC requires the object file of the PCH to be linked too!
-                    dep_libs.push(
-                        obj_dir
-                            .join(format!("{}.obj", pch_name))
-                            .to_string_lossy()
-                            .to_string(),
-                    );
-                } else {
-                    // GCC / Clang
-                    // Output: build/header.hpp.gch
-                    let pch_out = obj_dir.join(format!("{}.gch", pch_name));
-                    let need_pch = !pch_out.exists()
-                        || pch_source.metadata().unwrap().modified().unwrap()
-                            > pch_out
-                                .metadata()
-                                .map(|m| m.modified().unwrap())
-                                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-
-                    if need_pch {
-                        println!("{} Compiling PCH (GCC/Clang)...", "⚙".cyan());
-
-                        // Handle ccache prefix for PCH? Usually safe.
-                        let mut cmd = if let Some(wrapper) = ccache_prefix {
-                            let mut c = Command::new(wrapper);
-                            c.arg(&compiler);
-                            c
-                        } else {
-                            Command::new(&compiler)
-                        };
-
-                        cmd.args(&["-c"]);
-                        cmd.arg(pch_source);
-                        cmd.arg("-o");
-                        cmd.arg(&pch_out);
-                        cmd.args(&common_flags);
-                        cmd.arg(format!("-std={}", config.package.edition));
-
-                        let out = cmd.output()?;
-                        if !out.status.success() {
-                            return Err(anyhow::anyhow!(
-                                "Failed to compile PCH: {}",
-                                String::from_utf8_lossy(&out.stderr)
-                            ));
-                        }
-                    }
-                    // Use PCH
-                    // For GCC to find "header.hpp.gch" when user asks for "header.hpp",
-                    // we need "-I build/".
-                    pch_args.push(format!("-I{}", obj_dir.display()));
                 }
+                // Use PCH flags for other files
+                pch_args.push(format!("/Yu{}", pch_name));
+                pch_args.push(format!("/Fp{}", pch_out.display()));
+
+                // MSVC requires the object file of the PCH to be linked too!
+                dep_libs.push(
+                    obj_dir
+                        .join(format!("{}.obj", pch_name))
+                        .to_string_lossy()
+                        .to_string(),
+                );
+            } else {
+                // GCC / Clang
+                // Output: build/header.hpp.gch
+                let pch_out = obj_dir.join(format!("{}.gch", pch_name));
+                let need_pch = !pch_out.exists()
+                    || pch_source.metadata().unwrap().modified().unwrap()
+                        > pch_out
+                            .metadata()
+                            .map(|m| m.modified().unwrap())
+                            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+                if need_pch {
+                    println!("{} Compiling PCH (GCC/Clang)...", "⚙".cyan());
+
+                    // Handle ccache prefix for PCH? Usually safe.
+                    let mut cmd = if let Some(wrapper) = ccache_prefix {
+                        let mut c = Command::new(wrapper);
+                        c.arg(&compiler);
+                        c
+                    } else {
+                        Command::new(&compiler)
+                    };
+
+                    cmd.args(["-c"]);
+                    cmd.arg(pch_source);
+                    cmd.arg("-o");
+                    cmd.arg(&pch_out);
+                    cmd.args(&common_flags);
+                    cmd.arg(format!("-std={}", config.package.edition));
+
+                    let out = cmd.output()?;
+                    if !out.status.success() {
+                        return Err(anyhow::anyhow!(
+                            "Failed to compile PCH: {}",
+                            String::from_utf8_lossy(&out.stderr)
+                        ));
+                    }
+                }
+                // Use PCH
+                // For GCC to find "header.hpp.gch" when user asks for "header.hpp",
+                // we need "-I build/".
+                pch_args.push(format!("-I{}", obj_dir.display()));
             }
         }
     }
@@ -595,33 +591,31 @@ pub fn build_project(
                 } else {
                     args.push("-O3".to_string());
                 }
+            } else if is_msvc {
+                args.push("/Z7".to_string()); // Debug info
+                args.push("/W4".to_string());
             } else {
-                if is_msvc {
-                    args.push("/Z7".to_string()); // Debug info
-                    args.push("/W4".to_string());
-                } else {
-                    args.push("-g".to_string());
-                    args.push("-Wall".to_string());
-                }
+                args.push("-g".to_string());
+                args.push("-Wall".to_string());
             }
 
-            if let Some(build_cfg) = &config.build {
-                if let Some(flags) = &build_cfg.cflags {
-                    for flag in flags {
-                        // Translate MSVC-style flags for GCC/Clang
-                        let translated = if !is_msvc && flag.starts_with("/D") {
-                            format!("-D{}", &flag[2..])
-                        } else if !is_msvc && flag.starts_with("/I") {
-                            format!("-I{}", &flag[2..])
-                        } else if is_msvc && flag.starts_with("-D") {
-                            format!("/D{}", &flag[2..])
-                        } else if is_msvc && flag.starts_with("-I") {
-                            format!("/I{}", &flag[2..])
-                        } else {
-                            flag.clone()
-                        };
-                        args.push(translated);
-                    }
+            if let Some(build_cfg) = &config.build
+                && let Some(flags) = &build_cfg.cflags
+            {
+                for flag in flags {
+                    // Translate MSVC-style flags for GCC/Clang
+                    let translated = if !is_msvc && flag.starts_with("/D") {
+                        format!("-D{}", &flag[2..])
+                    } else if !is_msvc && flag.starts_with("/I") {
+                        format!("-I{}", &flag[2..])
+                    } else if is_msvc && flag.starts_with("-D") {
+                        format!("/D{}", &flag[2..])
+                    } else if is_msvc && flag.starts_with("-I") {
+                        format!("/I{}", &flag[2..])
+                    } else {
+                        flag.clone()
+                    };
+                    args.push(translated);
                 }
             }
             args.extend(common_flags.iter().cloned());
@@ -638,10 +632,7 @@ pub fn build_project(
             let needs_compile = if !obj_path.exists() {
                 true
             } else {
-                match check_dependencies(&obj_path, src_path) {
-                    Ok(needs) => needs,
-                    Err(_) => true, // On error (e.g. read failure), safe to recompile
-                }
+                check_dependencies(&obj_path, src_path).unwrap_or(true)
             };
 
             // Profiling Start
@@ -737,15 +728,15 @@ pub fn build_project(
     pb.finish_with_message("Compilation complete");
 
     // Profiling Dump
-    if let Some(events) = trace_events {
-        if let Ok(locked) = events.lock() {
-            let json = serde_json::to_string(&*locked)?;
-            fs::write("build_trace.json", json)?;
-            println!(
-                "   {} Profile saved to build_trace.json (Chrome Tracing)",
-                "📊".blue()
-            );
-        }
+    if let Some(events) = trace_events
+        && let Ok(locked) = events.lock()
+    {
+        let json = serde_json::to_string(&*locked)?;
+        fs::write("build_trace.json", json)?;
+        println!(
+            "   {} Profile saved to build_trace.json (Chrome Tracing)",
+            "📊".blue()
+        );
     }
 
     // Unzip results separate object files and JSON entries
@@ -800,10 +791,10 @@ pub fn build_project(
         }
 
         // Link Flags for Sanitizers
-        if let Some(checks) = &sanitize {
-            if !is_msvc {
-                cmd.arg(format!("-fsanitize={}", checks));
-            }
+        if let Some(checks) = &sanitize
+            && !is_msvc
+        {
+            cmd.arg(format!("-fsanitize={}", checks));
         }
 
         cmd.args(&object_files);
@@ -821,14 +812,14 @@ pub fn build_project(
             cmd.arg(lib);
         }
 
-        if let Some(build_cfg) = &config.build {
-            if let Some(libs) = &build_cfg.libs {
-                for lib in libs {
-                    if is_msvc || use_clang_cl {
-                        cmd.arg(format!("{}.lib", lib));
-                    } else {
-                        cmd.arg(format!("-l{}", lib));
-                    }
+        if let Some(build_cfg) = &config.build
+            && let Some(libs) = &build_cfg.libs
+        {
+            for lib in libs {
+                if is_msvc || use_clang_cl {
+                    cmd.arg(format!("{}.lib", lib));
+                } else {
+                    cmd.arg(format!("-l{}", lib));
                 }
             }
         }
@@ -853,12 +844,11 @@ pub fn build_project(
         }
 
         // 8. Post-build Script
-        if let Some(scripts) = &config.scripts {
-            if let Some(post) = &scripts.post_build {
-                if let Err(e) = run_script(post, &current_dir) {
-                    println!("{} Post-build script failed: {}", "x".red(), e);
-                }
-            }
+        if let Some(scripts) = &config.scripts
+            && let Some(post) = &scripts.post_build
+            && let Err(e) = run_script(post, &current_dir)
+        {
+            println!("{} Post-build script failed: {}", "x".red(), e);
         }
 
         println!(
@@ -883,9 +873,13 @@ pub fn build_and_run(
     // Load config once here
     let config = load_config()?;
 
-    let success = build_project(
-        &config, release, verbose, dry_run, false, false, false, None,
-    )?;
+    let options = BuildOptions {
+        release,
+        verbose,
+        dry_run,
+        ..Default::default()
+    };
+    let success = build_project(&config, &options)?;
     if !success {
         return Ok(());
     }

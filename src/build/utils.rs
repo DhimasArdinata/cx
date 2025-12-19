@@ -89,11 +89,10 @@ pub fn get_compiler(config: &CxConfig, has_cpp: bool) -> String {
     );
 
     // Check Config
-    if let Some(build) = &config.build {
-        if let Some(compiler) = &build.compiler {
+    if let Some(build) = &config.build
+        && let Some(compiler) = &build.compiler {
             return compiler.clone();
         }
-    }
 
     // Check Env Vars
     if has_cpp {
@@ -148,12 +147,12 @@ pub fn run_script(script: &str, project_dir: &Path) -> Result<()> {
     println!("   {} Running script: '{}'...", "📜".magenta(), script);
     let status = if cfg!(target_os = "windows") {
         Command::new("cmd")
-            .args(&["/C", script])
+            .args(["/C", script])
             .current_dir(project_dir)
             .status()?
     } else {
         Command::new("sh")
-            .args(&["-c", script])
+            .args(["-c", script])
             .current_dir(project_dir)
             .status()?
     };

@@ -36,14 +36,13 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
     let mut extra_cflags = Vec::new();
     let mut dep_libs = Vec::new();
 
-    if let Some(deps) = &config.dependencies {
-        if !deps.is_empty() {
+    if let Some(deps) = &config.dependencies
+        && !deps.is_empty() {
             let (paths, cflags, libs) = crate::deps::fetch_dependencies(deps)?;
             include_paths = paths;
             extra_cflags = cflags;
             dep_libs = libs;
         }
-    }
 
     println!("{} Running tests...", "🧪".magenta());
     if let Some(f) = &filter {
@@ -58,7 +57,7 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
     if obj_dir.exists() {
         for entry in WalkDir::new(obj_dir).into_iter().filter_map(|e| e.ok()) {
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "o" || e == "obj") {
+            if path.extension().is_some_and(|e| e == "o" || e == "obj") {
                 // Exclude main.o / main.obj to avoid multiple entry points
                 let stem = path.file_stem().unwrap().to_string_lossy();
                 if stem != "main" {
@@ -77,10 +76,10 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
     let mut test_files = Vec::new();
     for entry in WalkDir::new(test_dir).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path().to_path_buf();
-        let is_cpp = path.extension().map_or(false, |ext| {
+        let is_cpp = path.extension().is_some_and(|ext| {
             ["cpp", "cc", "cxx"].contains(&ext.to_str().unwrap())
         });
-        let is_c = path.extension().map_or(false, |ext| ext == "c");
+        let is_c = path.extension().is_some_and(|ext| ext == "c");
 
         if is_cpp || is_c {
             // Apply Filter
@@ -174,11 +173,10 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
 
             cmd.args(&extra_cflags);
 
-            if let Some(build_cfg) = &config.build {
-                if let Some(flags) = &build_cfg.cflags {
+            if let Some(build_cfg) = &config.build
+                && let Some(flags) = &build_cfg.cflags {
                     cmd.args(flags);
                 }
-            }
 
             // Link Libs & Project Objects
             if is_msvc {
@@ -191,8 +189,8 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
                 cmd.arg(obj);
             }
 
-            if let Some(build_cfg) = &config.build {
-                if let Some(libs) = &build_cfg.libs {
+            if let Some(build_cfg) = &config.build
+                && let Some(libs) = &build_cfg.libs {
                     for lib in libs {
                         if is_msvc {
                             cmd.arg(format!("{}.lib", lib));
@@ -201,7 +199,6 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
                         }
                     }
                 }
-            }
 
             let output = cmd.output();
             let success = match output {
