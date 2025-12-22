@@ -7,7 +7,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use caxe::build;
-
 use caxe::cache;
 use caxe::checker;
 use caxe::ci;
@@ -62,9 +61,9 @@ enum Commands {
         /// Show what would be executed without running
         #[arg(long)]
         dry_run: bool,
-        /// Generate build profile (Chrome Tracing)
+        /// Generate build trace (Chrome Tracing format)
         #[arg(long)]
-        profile: bool,
+        trace: bool,
         /// Compile to WebAssembly (requires Emscripten)
         #[arg(long)]
         wasm: bool,
@@ -74,6 +73,9 @@ enum Commands {
         /// Enable Sanitizers (address, thread, undefined, leak)
         #[arg(long)]
         sanitize: Option<String>,
+        /// Build as Arduino project (uses arduino-cli)
+        #[arg(long)]
+        arduino: bool,
     },
     /// Compile and run the output binary
     Run {
@@ -198,6 +200,25 @@ enum Commands {
     Tree,
     /// Show project statistics
     Stats,
+    /// Manage cross-compilation targets
+    Target {
+        #[command(subcommand)]
+        op: Option<TargetOp>,
+    },
+    /// Generate build system files (CMake, Ninja)
+    Generate {
+        #[command(subcommand)]
+        format: GenerateFormat,
+    },
+    /// Upload Arduino sketch to board
+    Upload {
+        /// Serial port (e.g., COM3, /dev/ttyUSB0)
+        #[arg(short, long)]
+        port: Option<String>,
+        /// Show verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
     /// Run a C/C++ file directly (Script Mode)
     #[command(external_subcommand)]
     External(Vec<String>),
@@ -223,9 +244,42 @@ enum ToolchainOp {
     Clear,
     /// Install a portable toolchain (e.g., mingw)
     Install {
-        /// Name of the toolchain to install
+        /// Name of the toolchain to install (interactive if omitted)
+        name: Option<String>,
+    },
+    /// Update/refresh toolchain cache (re-detect available toolchains)
+    Update,
+}
+
+#[derive(Subcommand)]
+enum TargetOp {
+    /// List all available targets
+    List,
+    /// Add a target to the project
+    Add {
+        /// Target name (windows-x64, linux-x64, macos-x64, wasm32, esp32)
         name: String,
     },
+    /// Remove a target from the project
+    Remove {
+        /// Target name
+        name: String,
+    },
+    /// Set the default target
+    Default {
+        /// Target name
+        name: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum GenerateFormat {
+    /// Generate CMakeLists.txt
+    Cmake,
+    /// Generate build.ninja
+    Ninja,
+    /// Generate compile_commands.json (for IDE integration)
+    CompileCommands,
 }
 
 fn main() -> Result<()> {
@@ -270,17 +324,36 @@ fn main() -> Result<()> {
             release,
             verbose,
             dry_run,
-            profile,
+            trace,
             wasm,
             lto,
             sanitize,
+            arduino,
         }) => {
+            // Auto-detect Arduino projects: check for .ino files or [arduino] config
+            let has_ino_files = std::fs::read_dir(".")
+                .map(|entries| {
+                    entries
+                        .filter_map(|e| e.ok())
+                        .any(|e| e.path().extension().is_some_and(|ext| ext == "ino"))
+                })
+                .unwrap_or(false);
+
+            let has_arduino_config = build::load_config()
+                .map(|c| c.arduino.is_some())
+                .unwrap_or(false);
+
+            // Handle Arduino builds (explicit flag OR auto-detected)
+            if *arduino || has_ino_files || has_arduino_config {
+                return build::arduino::build_arduino(*verbose);
+            }
+
             let config = build::load_config()?;
             let options = build::BuildOptions {
                 release: *release,
                 verbose: *verbose,
                 dry_run: *dry_run,
-                enable_profile: *profile,
+                enable_profile: *trace,
                 wasm: *wasm,
                 lto: *lto,
                 sanitize: sanitize.clone(),
@@ -387,6 +460,11 @@ fn main() -> Result<()> {
         Some(Commands::SetupIde) => ide::generate_ide_config(),
         Some(Commands::Tree) => tree::print_tree(),
         Some(Commands::Stats) => stats::print_stats(),
+        Some(Commands::Target { op }) => handle_target_command(op),
+        Some(Commands::Generate { format }) => handle_generate_command(format),
+        Some(Commands::Upload { port, verbose }) => {
+            build::arduino::upload_arduino(port.clone(), *verbose)
+        }
         Some(Commands::External(args)) => {
             if args.is_empty() {
                 anyhow::bail!("No command provided");
@@ -535,7 +613,7 @@ fn init_project() -> Result<()> {
     let lang = Select::new("Language?", vec!["cpp", "c"]).prompt()?;
     let template = Select::new(
         "Template?",
-        vec!["console", "web", "raylib", "sdl2", "opengl"],
+        vec!["console", "arduino", "web", "raylib", "sdl2", "opengl"],
     )
     .prompt()?;
 
@@ -543,8 +621,11 @@ fn init_project() -> Result<()> {
 
     fs::write("cx.toml", toml_content)?;
 
-    // Create src if generic template
-    if !Path::new("src").exists() {
+    // Create src if generic template (not Arduino)
+    if template == "arduino" {
+        // Arduino uses .ino files in project root
+        fs::write(format!("{}.ino", name), main_code)?;
+    } else if !Path::new("src").exists() {
         fs::create_dir("src")?;
         let ext = if lang == "c" { "c" } else { "cpp" };
         fs::write(Path::new("src").join(format!("main.{}", ext)), main_code)?;
@@ -557,7 +638,7 @@ fn init_project() -> Result<()> {
 
     // Write .gitignore if not exists
     if !Path::new(".gitignore").exists() {
-        fs::write(".gitignore", "/build\n/compile_commands.json\n")?;
+        fs::write(".gitignore", ".cx/\nvendor/\n")?;
     }
 
     println!(
@@ -577,7 +658,7 @@ fn create_project(name_opt: &Option<String>, lang_cli: &str, templ_cli: &str) ->
     };
 
     let template = if name_opt.is_none() {
-        let options = vec!["console", "web", "raylib", "sdl2", "opengl"];
+        let options = vec!["console", "arduino", "web", "raylib", "sdl2", "opengl"];
         Select::new("Select a template:", options).prompt()?
     } else {
         templ_cli
@@ -608,10 +689,16 @@ fn create_project(name_opt: &Option<String>, lang_cli: &str, templ_cli: &str) ->
     let (toml_content, main_code) = templates::get_template(&project_name, lang, template);
 
     // 4. Write Files
-    let ext = if lang == "c" { "c" } else { "cpp" };
     fs::write(path.join("cx.toml"), toml_content)?;
-    fs::write(path.join("src").join(format!("main.{}", ext)), main_code)?;
-    fs::write(path.join(".gitignore"), "/build\n/compile_commands.json\n")?;
+    fs::write(path.join(".gitignore"), ".cx/\nvendor/\n")?;
+
+    // Arduino uses .ino files in project root, other templates use src/main.cpp|c
+    if template == "arduino" {
+        fs::write(path.join(format!("{}.ino", project_name)), main_code)?;
+    } else {
+        let ext = if lang == "c" { "c" } else { "cpp" };
+        fs::write(path.join("src").join(format!("main.{}", ext)), main_code)?;
+    }
 
     // 5. VS Code Intellisense Support
     let vscode_dir = path.join(".vscode");
@@ -622,7 +709,7 @@ fn create_project(name_opt: &Option<String>, lang_cli: &str, templ_cli: &str) ->
         {
             "name": "cx-config",
             "includePath": ["${workspaceFolder}/**"],
-            "compileCommands": "${workspaceFolder}/compile_commands.json",
+            "compileCommands": "${workspaceFolder}/.cx/build/compile_commands.json",
             "cStandard": "c17",
             "cppStandard": "c++17"
         }
@@ -1042,6 +1129,10 @@ fn handle_toolchain_command(_op: &Option<ToolchainOp>) -> Result<()> {
             Some(ToolchainOp::Install { name }) => {
                 toolchain::install::install_toolchain(name.clone())?;
             }
+
+            Some(ToolchainOp::Update) => {
+                toolchain::install::update_toolchains()?;
+            }
         }
     }
 
@@ -1052,6 +1143,338 @@ fn handle_toolchain_command(_op: &Option<ToolchainOp>) -> Result<()> {
             "!".yellow()
         );
     }
+
+    Ok(())
+}
+
+/// Handle the `cx target` command for cross-compilation targets
+fn handle_target_command(op: &Option<TargetOp>) -> Result<()> {
+    let config_path = Path::new("cx.toml");
+
+    match op {
+        None | Some(TargetOp::List) => {
+            println!(
+                "{} {}",
+                "🎯".cyan(),
+                "Available Cross-Compilation Targets".bold()
+            );
+            println!("{}", "─".repeat(50).dimmed());
+            println!();
+            println!(
+                "   {} (MSVC) - Windows 64-bit",
+                "windows-x64".green().bold()
+            );
+            println!(
+                "   {} (MinGW) - Windows 64-bit GNU",
+                "windows-x64-gnu".green()
+            );
+            println!("   {} (GCC/Clang) - Linux 64-bit", "linux-x64".blue());
+            println!("   {} (Cross) - Linux ARM64", "linux-arm64".blue());
+            println!("   {} (Clang) - macOS Intel", "macos-x64".magenta());
+            println!(
+                "   {} (Clang) - macOS Apple Silicon",
+                "macos-arm64".magenta()
+            );
+            println!("   {} (Emscripten) - WebAssembly", "wasm32".yellow());
+            println!("   {} (ESP-IDF) - ESP32 Microcontroller", "esp32".red());
+            println!();
+
+            // Show configured targets if in a project
+            if config_path.exists()
+                && let Ok(content) = std::fs::read_to_string(config_path)
+            {
+                if content.contains("[targets]") || content.contains("targets =") {
+                    println!("{} Project targets configured", "✓".green());
+                } else {
+                    println!(
+                        "{} No targets configured. Use {} to add one.",
+                        "!".yellow(),
+                        "cx target add <name>".cyan()
+                    );
+                }
+            }
+            println!();
+            println!(
+                "Usage: {} or {}",
+                "cx target add <name>".cyan(),
+                "cx build --target <name>".cyan()
+            );
+        }
+        Some(TargetOp::Add { name }) => {
+            if !config_path.exists() {
+                println!(
+                    "{} No cx.toml found. Run {} first.",
+                    "x".red(),
+                    "cx init".cyan()
+                );
+                return Ok(());
+            }
+
+            let valid_targets = [
+                "windows-x64",
+                "windows-x64-gnu",
+                "linux-x64",
+                "linux-arm64",
+                "macos-x64",
+                "macos-arm64",
+                "wasm32",
+                "esp32",
+            ];
+
+            if !valid_targets.contains(&name.as_str()) {
+                println!(
+                    "{} Unknown target '{}'. Run {} to see available targets.",
+                    "x".red(),
+                    name,
+                    "cx target list".cyan()
+                );
+                return Ok(());
+            }
+
+            // Read and update config
+            let mut content = std::fs::read_to_string(config_path)?;
+
+            if content.contains(&format!("\"{}\"", name)) {
+                println!("{} Target '{}' already configured.", "!".yellow(), name);
+                return Ok(());
+            }
+
+            // Add targets section if not present
+            if !content.contains("[targets]") {
+                content.push_str(&format!("\n[targets]\nlist = [\"{}\"]\n", name));
+            } else {
+                // Append to existing targets list
+                content = content.replace("list = [", &format!("list = [\"{}\", ", name));
+            }
+
+            std::fs::write(config_path, content)?;
+            println!("{} Added target: {}", "✓".green(), name.cyan());
+            println!(
+                "   Build with: {}",
+                format!("cx build --target {}", name).yellow()
+            );
+        }
+        Some(TargetOp::Remove { name }) => {
+            if !config_path.exists() {
+                println!("{} No cx.toml found.", "x".red());
+                return Ok(());
+            }
+
+            let content = std::fs::read_to_string(config_path)?;
+            let new_content = content
+                .replace(&format!("\"{}\", ", name), "")
+                .replace(&format!(", \"{}\"", name), "")
+                .replace(&format!("\"{}\"", name), "");
+
+            std::fs::write(config_path, new_content)?;
+            println!("{} Removed target: {}", "✓".green(), name);
+        }
+        Some(TargetOp::Default { name }) => {
+            if !config_path.exists() {
+                println!("{} No cx.toml found.", "x".red());
+                return Ok(());
+            }
+
+            let mut content = std::fs::read_to_string(config_path)?;
+
+            // Add or update default_target
+            if content.contains("default_target") {
+                // Replace existing
+                let re = regex::Regex::new(r#"default_target\s*=\s*"[^"]*""#).unwrap();
+                content = re
+                    .replace(&content, &format!("default_target = \"{}\"", name))
+                    .to_string();
+            } else if content.contains("[targets]") {
+                content = content.replace(
+                    "[targets]",
+                    &format!("[targets]\ndefault_target = \"{}\"", name),
+                );
+            } else {
+                content.push_str(&format!("\n[targets]\ndefault_target = \"{}\"\n", name));
+            }
+
+            std::fs::write(config_path, content)?;
+            println!("{} Set default target: {}", "✓".green(), name.cyan());
+        }
+    }
+    Ok(())
+}
+
+/// Handle the `cx generate` command for build system file generation
+fn handle_generate_command(format: &GenerateFormat) -> Result<()> {
+    let config = build::load_config()?;
+
+    match format {
+        GenerateFormat::Cmake => {
+            generate_cmake(&config)?;
+        }
+        GenerateFormat::Ninja => {
+            generate_ninja(&config)?;
+        }
+        GenerateFormat::CompileCommands => {
+            println!(
+                "{} compile_commands.json is generated automatically when building.",
+                "!".yellow()
+            );
+            println!("   Location: {}", ".cx/build/compile_commands.json".cyan());
+            println!("   Run {} to generate it.", "cx build".cyan());
+        }
+    }
+    Ok(())
+}
+
+fn generate_cmake(config: &caxe::config::CxConfig) -> Result<()> {
+    println!("{} Generating CMakeLists.txt...", "📝".cyan());
+
+    let name = &config.package.name;
+    let edition = &config.package.edition;
+
+    // Convert edition to CMake standard
+    let cpp_standard = edition.replace("c++", "").replace("c", "");
+
+    let mut cmake = format!(
+        r#"cmake_minimum_required(VERSION 3.16)
+project({name} LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD {cpp_standard})
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Source files
+file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.c")
+
+# Executable
+add_executable(${{PROJECT_NAME}} ${{SOURCES}})
+
+# Include directories
+target_include_directories(${{PROJECT_NAME}} PRIVATE src)
+"#
+    );
+
+    // Add dependencies if present
+    if let Some(deps) = &config.dependencies {
+        cmake.push_str("\n# Dependencies\n");
+        for dep_name in deps.keys() {
+            cmake.push_str(&format!("# find_package({} REQUIRED)\n", dep_name));
+        }
+    }
+
+    // Add libs if present
+    if let Some(build) = &config.build
+        && let Some(libs) = &build.libs
+    {
+        cmake.push_str("\n# Libraries\ntarget_link_libraries(${PROJECT_NAME} PRIVATE");
+        for lib in libs {
+            cmake.push_str(&format!(" {}", lib));
+        }
+        cmake.push_str(")\n");
+    }
+
+    std::fs::write("CMakeLists.txt", cmake)?;
+    println!("{} Created CMakeLists.txt", "✓".green());
+    println!();
+    println!("Usage:");
+    println!(
+        "   {} && {}",
+        "cmake -B build -S .".yellow(),
+        "cmake --build build".yellow()
+    );
+
+    Ok(())
+}
+
+fn generate_ninja(config: &caxe::config::CxConfig) -> Result<()> {
+    println!("{} Generating build.ninja...", "📝".cyan());
+
+    let name = &config.package.name;
+    let edition = &config.package.edition;
+
+    // Detect compiler
+    let compiler = if cfg!(windows) { "cl" } else { "g++" };
+    let is_msvc = compiler == "cl";
+
+    let std_flag = if is_msvc {
+        build::utils::get_std_flag_msvc(edition)
+    } else {
+        build::utils::get_std_flag_gcc(edition)
+    };
+
+    let mut ninja = String::from("# Auto-generated by caxe\n\n");
+
+    if is_msvc {
+        ninja.push_str(&format!(
+            r#"
+cxx = cl
+cxxflags = /nologo /EHsc {std_flag} /c
+linkflags = /nologo
+
+rule compile
+  command = $cxx $cxxflags $in /Fo$out
+  description = Compiling $in
+
+rule link
+  command = $cxx $linkflags $in /Fe$out
+  description = Linking $out
+
+"#
+        ));
+    } else {
+        ninja.push_str(&format!(
+            r#"
+cxx = g++
+cxxflags = {std_flag} -c
+linkflags = 
+
+rule compile
+  command = $cxx $cxxflags $in -o $out
+  description = Compiling $in
+
+rule link
+  command = $cxx $linkflags $in -o $out
+  description = Linking $out
+
+"#
+        ));
+    }
+
+    // Find source files
+    let src_dir = Path::new("src");
+    let mut obj_files = Vec::new();
+
+    if src_dir.exists() {
+        for entry in walkdir::WalkDir::new(src_dir)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+            if path
+                .extension()
+                .is_some_and(|e| ["cpp", "cc", "cxx", "c"].contains(&e.to_str().unwrap()))
+            {
+                let obj_name = path.file_stem().unwrap().to_string_lossy();
+                let obj_ext = if is_msvc { "obj" } else { "o" };
+                let obj_path = format!("build/{}.{}", obj_name, obj_ext);
+
+                ninja.push_str(&format!("build {}: compile {}\n", obj_path, path.display()));
+                obj_files.push(obj_path);
+            }
+        }
+    }
+
+    // Link
+    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
+    ninja.push_str(&format!(
+        "\nbuild build/{}{}: link {}\n",
+        name,
+        exe_ext,
+        obj_files.join(" ")
+    ));
+    ninja.push_str(&format!("\ndefault build/{}{}\n", name, exe_ext));
+
+    std::fs::write("build.ninja", ninja)?;
+    println!("{} Created build.ninja", "✓".green());
+    println!();
+    println!("Usage: {}", "ninja".yellow());
 
     Ok(())
 }

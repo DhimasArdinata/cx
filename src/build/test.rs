@@ -1,4 +1,4 @@
-use super::utils::{get_compiler, load_config};
+use super::utils::{get_compiler, get_std_flag_gcc, get_std_flag_msvc, load_config};
 use crate::config::CxConfig;
 use anyhow::Result;
 use colored::*;
@@ -122,7 +122,7 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
             args.push("/nologo".to_string());
             args.push("/EHsc".to_string());
             args.push(format!("/Fe{}", output_bin));
-            args.push(format!("/std:{}", config.package.edition));
+            args.push(get_std_flag_msvc(&config.package.edition));
 
             // Includes
             for p in &include_paths {
@@ -145,7 +145,7 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
                 args.push(lib.clone());
             }
         } else {
-            args.push(format!("-std={}", config.package.edition));
+            args.push(get_std_flag_gcc(&config.package.edition));
             args.push("-o".to_string());
             args.push(output_bin.clone());
 
@@ -266,7 +266,7 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
                 cmd.arg("/EHsc");
                 cmd.arg(path);
                 cmd.arg(format!("/Fe{}", output_bin)); // Output exe name
-                cmd.arg(format!("/std:{}", config.package.edition));
+                cmd.arg(get_std_flag_msvc(&config.package.edition));
 
                 // Includes
                 for p in &include_paths {
@@ -277,7 +277,7 @@ pub fn run_tests(filter: Option<String>) -> Result<()> {
             } else {
                 cmd.arg(path);
                 cmd.arg("-o").arg(&output_bin);
-                cmd.arg(format!("-std={}", config.package.edition));
+                cmd.arg(get_std_flag_gcc(&config.package.edition));
 
                 // Includes
                 for p in &include_paths {

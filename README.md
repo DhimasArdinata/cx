@@ -28,6 +28,8 @@ It provides a unified workflow for scaffolding, building, testing, formatting, a
   - Test filtering (`--filter`) and binary caching.
 - **📊 Insights**: `cx stats` for code metrics and `cx tree` for dependency graphs.
 - **🌍 WebAssembly**: `cx build --wasm` (via Emscripten) support out of the box.
+- **🤖 Arduino/IoT**: Auto-detect `.ino` files, build and upload via `arduino-cli`.
+- **🎯 Cross-Platform Targets**: Manage build targets (Windows, Linux, macOS, WebAssembly, ESP32).
 - **🛡️ Safety**: `cx build --sanitize` for Address/Undefined Behavior sanitizers.
 - **🎨 Code Formatting**: Built-in `cx fmt` command (via `clang-format`).
 - **🤖 Automation**: Generators for **Docker**, **GitHub Actions**, and **VSCode** configs.
@@ -96,10 +98,22 @@ cx new my-game --template raylib
   - `--wasm`: Compile to WebAssembly (requires Emscripten).
   - `--lto`: Enable Link Time Optimization.
   - `--sanitize=<check>`: Enable runtime sanitizers (e.g., `address`, `undefined`).
-  - `--profile`: Trace build times (generate chrome tracing `.json`).
+  - `--trace`: Generate build trace (`.cx/build/build_trace.json` for Chrome Tracing).
 - **`cx watch`**: Rebuild on file save.
 - **`cx clean`**: Remove build artifacts.
 - **`cx package`**: Create a distribution archive (ZIP) containing the executable, DLLs, and assets.
+
+### Arduino/IoT
+- **`cx build --arduino`**: Build Arduino sketch (auto-detected if `.ino` files present).
+- **`cx upload -p COM3`**: Upload sketch to Arduino board.
+- **`cx new myproject --template arduino`**: Create Arduino project.
+
+### Cross-Platform
+- **`cx target list`**: Show available cross-compilation targets.
+- **`cx target add <name>`**: Add a target to your project.
+- **`cx target remove <name>`**: Remove a target.
+- **`cx generate cmake`**: Generate CMakeLists.txt from cx.toml.
+- **`cx generate ninja`**: Generate build.ninja from cx.toml.
 
 ### Dependencies
 - **`cx add <lib>`**: Add a library from registry or Git URL.
@@ -120,7 +134,8 @@ cx new my-game --template raylib
 - **`cx toolchain`**: Manage C/C++ compilers.
   - `list`: Show detected compilers.
   - `select`: Choose active compiler interactively.
-  - `install <name>`: Download portable toolchains (e.g., `mingw`).
+  - `install`: Interactive wizard to install toolchains and dev tools.
+  - `update`: Check for and install toolchain updates.
 - **`cx docker`**: Generate a Dockerfile.
 - **`cx ci`**: Generate a GitHub Actions workflow.
 - **`cx setup-ide`**: Generate VSCode configuration (`.vscode/`).
@@ -149,6 +164,10 @@ json = { git = "https://github.com/nlohmann/json.git", tag = "v3.11.2" }
 
 # 3. System Dependency (pkg-config)
 gtk4 = { pkg = "gtk4" }
+
+[arduino]
+board = "arduino:avr:uno"  # or "esp32:esp32:esp32"
+port = "COM3"              # optional, for upload
 ```
 
 ## 📝 License

@@ -13,9 +13,11 @@ pub fn format_code() -> Result<()> {
         .output()
         .is_err()
     {
+        println!("{} clang-format not found.", "x".red());
         println!(
-            "{} clang-format not found. Please install it first.",
-            "x".red()
+            "   {} Run {} to install it.",
+            "💡".yellow(),
+            "cx toolchain install".cyan()
         );
         return Ok(());
     }
@@ -57,9 +59,10 @@ pub fn format_code() -> Result<()> {
             .status();
 
         if let Ok(s) = status
-            && s.success() {
-                count += 1;
-            }
+            && s.success()
+        {
+            count += 1;
+        }
         pb.inc(1);
     }
 
@@ -89,12 +92,13 @@ pub fn check_code() -> Result<()> {
     let mut include_flags = Vec::new();
     if let Some(deps) = &config.dependencies
         && !deps.is_empty()
-            && let Ok((paths, cflags, _)) = deps::fetch_dependencies(deps) {
-                for p in paths {
-                    include_flags.push(format!("-I{}", p.display()));
-                }
-                include_flags.extend(cflags);
-            }
+        && let Ok((paths, cflags, _)) = deps::fetch_dependencies(deps)
+    {
+        for p in paths {
+            include_flags.push(format!("-I{}", p.display()));
+        }
+        include_flags.extend(cflags);
+    }
 
     let mut files = Vec::new();
     for entry in WalkDir::new("src").into_iter().filter_map(|e| e.ok()) {
@@ -131,9 +135,10 @@ pub fn check_code() -> Result<()> {
             cmd.arg(format!("-std={}", config.package.edition));
 
             if let Some(build_cfg) = &config.build
-                && let Some(flags) = &build_cfg.cflags {
-                    cmd.args(flags);
-                }
+                && let Some(flags) = &build_cfg.cflags
+            {
+                cmd.args(flags);
+            }
             cmd.args(&include_flags);
 
             // Execute clang-tidy

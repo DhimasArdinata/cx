@@ -90,9 +90,10 @@ pub fn get_compiler(config: &CxConfig, has_cpp: bool) -> String {
 
     // Check Config
     if let Some(build) = &config.build
-        && let Some(compiler) = &build.compiler {
-            return compiler.clone();
-        }
+        && let Some(compiler) = &build.compiler
+    {
+        return compiler.clone();
+    }
 
     // Check Env Vars
     if has_cpp {
@@ -161,4 +162,79 @@ pub fn run_script(script: &str, project_dir: &Path) -> Result<()> {
         return Err(anyhow::anyhow!("Script failed"));
     }
     Ok(())
+}
+
+/// Get the MSVC-compatible standard flag for a given edition
+/// MSVC uses /std: prefix and has different naming for newer standards
+pub fn get_std_flag_msvc(edition: &str) -> String {
+    let normalized = edition.to_lowercase().replace("c++", "").replace("c", "");
+
+    match normalized.as_str() {
+        // C standards
+        "89" | "90" => "/std:c11".to_string(), // MSVC doesn't support c89/90, fall back to c11
+        "99" => "/std:c11".to_string(),        // MSVC doesn't support c99, fall back to c11
+        "11" if edition.starts_with("c") && !edition.contains("++") => "/std:c11".to_string(),
+        "17" if edition.starts_with("c") && !edition.contains("++") => "/std:c17".to_string(),
+        "23" if edition.starts_with("c") && !edition.contains("++") => "/std:clatest".to_string(),
+
+        // C++ standards
+        "98" | "03" => "/std:c++14".to_string(), // MSVC minimum is c++14
+        "11" => "/std:c++14".to_string(),        // MSVC minimum is c++14
+        "14" => "/std:c++14".to_string(),
+        "17" => "/std:c++17".to_string(),
+        "20" => "/std:c++20".to_string(),
+        "23" => "/std:c++latest".to_string(), // MSVC uses c++latest for c++23
+        "26" | "2c" => "/std:c++latest".to_string(), // Future standards
+        "latest" => "/std:c++latest".to_string(),
+
+        // If already in /std: format, pass through
+        _ if edition.starts_with("/std:") => edition.to_string(),
+
+        // Default: try to use as-is
+        _ => format!("/std:{}", edition),
+    }
+}
+
+/// Get the GCC/Clang-compatible standard flag for a given edition
+/// GCC/Clang use -std= prefix
+pub fn get_std_flag_gcc(edition: &str) -> String {
+    let normalized = edition.to_lowercase();
+
+    // If already in -std= format, extract the standard
+    let edition_clean = normalized.strip_prefix("-std=").unwrap_or(&normalized);
+
+    match edition_clean {
+        // C standards - GCC/Clang support all of these
+        "c89" | "c90" => "-std=c89".to_string(),
+        "c99" => "-std=c99".to_string(),
+        "c11" => "-std=c11".to_string(),
+        "c17" | "c18" => "-std=c17".to_string(),
+        "c23" | "c2x" => "-std=c23".to_string(),
+
+        // C++ standards - GCC/Clang support all of these
+        "c++98" | "c++03" => "-std=c++03".to_string(),
+        "c++11" | "c++0x" => "-std=c++11".to_string(),
+        "c++14" | "c++1y" => "-std=c++14".to_string(),
+        "c++17" | "c++1z" => "-std=c++17".to_string(),
+        "c++20" | "c++2a" => "-std=c++20".to_string(),
+        "c++23" | "c++2b" => "-std=c++23".to_string(),
+        "c++26" | "c++2c" => "-std=c++26".to_string(),
+
+        // GNU extensions (supported by GCC and Clang)
+        "gnu89" | "gnu90" => "-std=gnu89".to_string(),
+        "gnu99" => "-std=gnu99".to_string(),
+        "gnu11" => "-std=gnu11".to_string(),
+        "gnu17" | "gnu18" => "-std=gnu17".to_string(),
+        "gnu23" | "gnu2x" => "-std=gnu23".to_string(),
+        "gnu++98" | "gnu++03" => "-std=gnu++03".to_string(),
+        "gnu++11" | "gnu++0x" => "-std=gnu++11".to_string(),
+        "gnu++14" | "gnu++1y" => "-std=gnu++14".to_string(),
+        "gnu++17" | "gnu++1z" => "-std=gnu++17".to_string(),
+        "gnu++20" | "gnu++2a" => "-std=gnu++20".to_string(),
+        "gnu++23" | "gnu++2b" => "-std=gnu++23".to_string(),
+        "gnu++26" | "gnu++2c" => "-std=gnu++26".to_string(),
+
+        // Default: use as-is with -std= prefix
+        _ => format!("-std={}", edition_clean),
+    }
 }

@@ -1,8 +1,9 @@
+pub mod arduino;
 mod clean;
 mod core;
 mod feedback;
 mod test;
-mod utils;
+pub mod utils;
 mod watcher;
 
 pub use clean::clean;

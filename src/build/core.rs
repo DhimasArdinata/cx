@@ -1,4 +1,4 @@
-use super::utils::{get_compiler, load_config, run_script};
+use super::utils::{get_compiler, get_std_flag_gcc, get_std_flag_msvc, load_config, run_script};
 use crate::config::CxConfig;
 use crate::deps;
 use crate::ui;
@@ -216,7 +216,7 @@ pub fn build_project(config: &CxConfig, options: &BuildOptions) -> Result<bool> 
 
     // 2. Setup Directories
     let profile = if release { "release" } else { "debug" };
-    let build_dir = Path::new("build").join(profile);
+    let build_dir = Path::new(".cx").join("build").join(profile);
     let obj_dir = build_dir.join("obj");
     fs::create_dir_all(&obj_dir)?;
 
@@ -623,7 +623,7 @@ pub fn build_project(config: &CxConfig, options: &BuildOptions) -> Result<bool> 
                 args.push("/EHsc".to_string()); // Standard C++ exceptions
                 args.push(src_path.to_string_lossy().to_string());
                 args.push(format!("/Fo{}", obj_path.to_string_lossy()));
-                args.push(format!("/std:{}", config.package.edition));
+                args.push(get_std_flag_msvc(&config.package.edition));
 
                 // Recursive Header Tracking for MSVC
                 // /sourceDependencies <file> available in VS 2019+
@@ -636,7 +636,7 @@ pub fn build_project(config: &CxConfig, options: &BuildOptions) -> Result<bool> 
                 args.push(src_path.to_string_lossy().to_string());
                 args.push("-o".to_string());
                 args.push(obj_path.to_string_lossy().to_string());
-                args.push(format!("-std={}", config.package.edition));
+                args.push(get_std_flag_gcc(&config.package.edition));
 
                 // Generate Dependency File
                 args.push("-MMD".to_string());
@@ -791,10 +791,13 @@ pub fn build_project(config: &CxConfig, options: &BuildOptions) -> Result<bool> 
         && let Ok(locked) = events.lock()
     {
         let json = serde_json::to_string(&*locked)?;
-        fs::write("build_trace.json", json)?;
+        let trace_path = Path::new(".cx").join("build").join("build_trace.json");
+        fs::create_dir_all(trace_path.parent().unwrap())?;
+        fs::write(&trace_path, json)?;
         println!(
-            "   {} Profile saved to build_trace.json (Chrome Tracing)",
-            "📊".blue()
+            "   {} Build trace saved to {} (Chrome Tracing)",
+            "📊".blue(),
+            trace_path.display()
         );
     }
 
@@ -802,9 +805,11 @@ pub fn build_project(config: &CxConfig, options: &BuildOptions) -> Result<bool> 
     let (object_files, json_entries): (Vec<PathBuf>, Vec<serde_json::Value>) =
         results.into_iter().unzip();
 
-    // 6. Generate compile_commands.json
+    // 6. Generate compile_commands.json in .cx/build/
     let json_str = serde_json::to_string_pretty(&json_entries)?;
-    fs::write("compile_commands.json", json_str)?;
+    let compile_commands_path = Path::new(".cx").join("build").join("compile_commands.json");
+    fs::create_dir_all(compile_commands_path.parent().unwrap())?;
+    fs::write(&compile_commands_path, json_str)?;
 
     // 7. Linking
     let mut needs_link = !output_bin.exists();

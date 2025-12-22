@@ -2,5 +2,6 @@
 /build
 **/*.rs.bk
 .cx/
+vendor/
 .DS_Store
 test/

@@ -118,6 +118,7 @@ pub fn scan_project(path: &Path) -> Result<Option<CxConfig>> {
         scripts: None,
         test: None,
         workspace: None,
+        arduino: None,
     };
 
     Ok(Some(config))

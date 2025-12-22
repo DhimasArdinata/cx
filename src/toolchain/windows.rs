@@ -367,6 +367,92 @@ fn get_compiler_version(compiler_path: &Path, is_msvc: bool) -> String {
     }
 }
 
+/// Detect a toolchain from a specific VS source (matched by display name)
+/// This is used when the user has selected a specific VS installation
+pub fn detect_toolchain_from_source(
+    compiler_type: CompilerType,
+    source: &str,
+) -> Result<Toolchain, ToolchainError> {
+    // Get all VS installations
+    let vs_installations = detect_vs_installations().unwrap_or_default();
+
+    // Find the matching installation by source name
+    let vs = vs_installations
+        .iter()
+        .find(|vs| source.contains(&vs.display_name) || vs.display_name.contains(source))
+        .ok_or_else(|| {
+            ToolchainError::NotFound(format!(
+                "Visual Studio installation '{}' not found. Run 'cx toolchain select' to choose again.",
+                source
+            ))
+        })?;
+
+    // Load vcvars environment from the specific VS installation
+    let env_vars = load_vcvars_env(&vs.install_path)?;
+
+    // Find MSVC toolset in this specific installation
+    let (toolset_path, toolset_version) = find_msvc_toolset(&vs.install_path).ok_or_else(|| {
+        ToolchainError::NotFound("MSVC toolset not found in selected VS installation".to_string())
+    })?;
+
+    // Get Windows SDK version from env
+    let windows_sdk_version = env_vars.get("WINDOWSSDKVERSION").cloned();
+
+    // Decide which compiler to use based on type
+    let (final_type, cxx_path, cc_path) = match compiler_type {
+        CompilerType::ClangCL => {
+            if let Some(clang_cl) = find_bundled_clang_cl(&vs.install_path) {
+                (CompilerType::ClangCL, clang_cl.clone(), clang_cl)
+            } else if let Some(clang_cl) = find_standalone_llvm() {
+                (CompilerType::ClangCL, clang_cl.clone(), clang_cl)
+            } else {
+                let cl = find_cl_exe(&toolset_path)
+                    .ok_or_else(|| ToolchainError::NotFound("cl.exe not found".to_string()))?;
+                (CompilerType::MSVC, cl.clone(), cl)
+            }
+        }
+        CompilerType::Clang => {
+            if let Some(clang) = find_bundled_clang(&vs.install_path) {
+                let cc = clang.with_file_name("clang.exe");
+                (CompilerType::Clang, clang, cc)
+            } else if let Some(clang) = find_standalone_clang() {
+                let cc = clang.with_file_name("clang.exe");
+                (CompilerType::Clang, clang, cc)
+            } else {
+                let cl = find_cl_exe(&toolset_path)
+                    .ok_or_else(|| ToolchainError::NotFound("cl.exe not found".to_string()))?;
+                (CompilerType::MSVC, cl.clone(), cl)
+            }
+        }
+        CompilerType::MSVC | CompilerType::GCC => {
+            let cl = find_cl_exe(&toolset_path)
+                .ok_or_else(|| ToolchainError::NotFound("cl.exe not found".to_string()))?;
+            (CompilerType::MSVC, cl.clone(), cl)
+        }
+    };
+
+    // Get linker path
+    let linker_path = toolset_path
+        .join("bin")
+        .join("Hostx64")
+        .join("x64")
+        .join("link.exe");
+
+    let version = get_compiler_version(&cxx_path, final_type == CompilerType::MSVC);
+
+    Ok(Toolchain {
+        compiler_type: final_type,
+        cc_path,
+        cxx_path,
+        linker_path,
+        version,
+        msvc_toolset_version: Some(toolset_version),
+        windows_sdk_version,
+        vs_install_path: Some(vs.install_path.clone()),
+        env_vars,
+    })
+}
+
 /// Main entry point: detect the best available toolchain
 pub fn detect_toolchain(preferred: Option<CompilerType>) -> Result<Toolchain, ToolchainError> {
     // 1. Detect VS Installations
@@ -389,9 +475,10 @@ pub fn detect_toolchain(preferred: Option<CompilerType>) -> Result<Toolchain, To
         // Try PATH
         if let Ok(output) = std::process::Command::new("where").arg("g++").output()
             && output.status.success()
-            && let Some(line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-                mingw_path = Some(PathBuf::from(line.trim()));
-            }
+            && let Some(line) = String::from_utf8_lossy(&output.stdout).lines().next()
+        {
+            mingw_path = Some(PathBuf::from(line.trim()));
+        }
     }
 
     // 3. Selection Logic

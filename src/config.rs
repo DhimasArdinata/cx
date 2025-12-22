@@ -9,6 +9,17 @@ pub struct CxConfig {
     pub scripts: Option<ScriptsConfig>,
     pub test: Option<TestConfig>,
     pub workspace: Option<WorkspaceConfig>,
+    pub arduino: Option<ArduinoConfig>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
+pub struct ArduinoConfig {
+    /// Arduino board FQBN (e.g., "arduino:avr:uno", "esp32:esp32:esp32")
+    pub board: Option<String>,
+    /// Port for upload (e.g., "COM3", "/dev/ttyUSB0")
+    pub port: Option<String>,
+    /// Additional arduino-cli flags
+    pub flags: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
@@ -63,7 +74,7 @@ pub struct BuildConfig {
 }
 
 fn default_edition() -> String {
-    "c++20".to_string()
+    "c++23".to_string()
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
@@ -83,9 +94,9 @@ pub fn create_ephemeral_config(
             name: name.to_string(),
             version: "0.0.0".to_string(),
             edition: if has_cpp {
-                "c++20".to_string()
+                "c++23".to_string()
             } else {
-                "c17".to_string()
+                "c23".to_string()
             },
         },
         build: Some(BuildConfig {
@@ -100,5 +111,6 @@ pub fn create_ephemeral_config(
         scripts: None,
         test: None,
         workspace: None,
+        arduino: None,
     }
 }

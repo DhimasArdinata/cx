@@ -208,6 +208,40 @@ int main() {
                 )
             }
         }
+        "arduino" => (
+            format!(
+                r#"[package]
+name = "{}"
+version = "0.1.0"
+edition = "c++17"
+
+[arduino]
+board = "arduino:avr:uno"
+# port = "COM3"  # Uncomment and set your port
+"#,
+                name
+            ),
+            format!(
+                r#"// {} - Arduino Sketch
+// Build: cx build --arduino
+// Upload: cx upload -p COM3
+
+void setup() {{
+    Serial.begin(9600);
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial.println("Hello from {}!");
+}}
+
+void loop() {{
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(1000);
+}}
+"#,
+                name, name
+            ),
+        ),
         _ => {
             let dep = if lang == "cpp" {
                 "\n[dependencies]\n# json = \"...\""
@@ -222,7 +256,7 @@ edition = "{}"
 {}
 "#,
                 name,
-                if lang == "c" { "c17" } else { "c++20" },
+                if lang == "c" { "c23" } else { "c++23" },
                 dep
             );
 
