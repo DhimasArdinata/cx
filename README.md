@@ -273,8 +273,11 @@ Contributions are welcome! Here's how to get started:
 If you find caxe useful, consider supporting its development:
 
 [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/dhimasardinata)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=ko-fi)](https://ko-fi.com/dhimasardinata)
+[![Open Collective](https://img.shields.io/badge/Open%20Collective-Donate-7FADF2?logo=opencollective)](https://opencollective.com/caxe)
 
 ### 🪙 Crypto Donations
+
 
 | Network | Address |
 |---------|---------|
